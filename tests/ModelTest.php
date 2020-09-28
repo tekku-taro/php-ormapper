@@ -280,4 +280,58 @@ class ModelTest extends TestCase
 
         $this->assertFalse($this->seeInDatabase('posts', ['id'=>$id]));
     }
+
+    public function testUpdateAll()
+    {
+        $data = [
+            'body'=>'soso'
+        ];
+        Post::updateAll(['finished'=>1], $data);
+
+        $posts = Post::where('finished', 1)->findMany();
+
+        $expected = 'soso';
+        foreach ($posts as $key => $post) {
+            $this->assertEquals($expected, $post->body);
+        }
+
+        $data['body'] = 'all changed';
+        Post::updateAll([], $data, true);
+
+        $posts = Post::findMany();
+
+        $expected = 'all changed';
+        foreach ($posts as $key => $post) {
+            $this->assertEquals($expected, $post->body);
+        }
+
+        $data['body'] = 'all not changed';
+        Post::updateAll([], $data, false);
+
+        $posts = Post::findMany();
+
+        $expected = 'all not changed';
+        foreach ($posts as $key => $post) {
+            $this->assertNotEquals($expected, $post->body);
+        }
+    }
+
+
+    public function testDeleteAll()
+    {
+        Post::deleteAll(['finished'=>1]);
+
+        $count = Post::count();
+        $this->assertEquals(1, $count);
+
+        Post::deleteAll([]);
+
+        $count = Post::count();
+        $this->assertEquals(1, $count);
+
+        Post::deleteAll([], true);
+
+        $count = Post::count();
+        $this->assertEquals(0, $count);
+    }
 }

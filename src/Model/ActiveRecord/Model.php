@@ -196,12 +196,30 @@ class Model implements Entity
         return $query->{$method}(...$args);
     }
 
+    public static function insertAll(array $recArray)
+    {
+        foreach ($recArray as $data) {
+            $insertArray[] =  static::pickInsertable($data);
+        }
 
-    public function updateAll($search = [], $setData, $updateAllRecord = false)
+        $query = [
+            'data' => $insertArray,
+            'bulk'=>true,
+        ];
+
+        return RDBAdapter::bulkInsert(static::$tableName, $query);
+    }
+
+    public static function updateAll($search = [], $setData, $updateAllRecord = false)
     {
         $query = [];
         foreach ($search as $field => $value) {
-            $query['where'][] = $field . ' = ' . $value;
+            if ($value === true) {
+                $value = 1;
+            } elseif ($value === false) {
+                $value = 0;
+            }
+            $query['where'][] = ['AND', $field . ' = ' . (string) $value];
         }
         if (empty($query) && $updateAllRecord == false) {
             return 0;
@@ -212,11 +230,11 @@ class Model implements Entity
         return RDBAdapter::update(static::$tableName, $query);
     }
 
-    public function deleteAll($search = [], $deleteAllRecord = false)
+    public static function deleteAll($search = [], $deleteAllRecord = false)
     {
         $query = [];
         foreach ($search as $field => $value) {
-            $query['where'][] = $field . ' = ' . $value;
+            $query['where'][] = ['AND', $field . ' = ' . $value];
         }
         if (empty($query) && $deleteAllRecord == false) {
             return 0;

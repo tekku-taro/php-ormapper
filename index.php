@@ -13,78 +13,62 @@ $config = [
 ];
 RDBAdapter::init($config);
 
-$post = new Post();
-$data = [
-    'title'=>'How to cook pizza553',
-    'hidden'=>'test create from array',
-    'finished'=>false
-];
-
-$post = $post->createFromArray($data);
-
-// print_r($post->toArray());
+// $today = new DateTime();
 // $data = [
-//     'finished' => true
+//     ['title'=>'title4', 'body'=>'bad','author_id'=>1,'date'=>$today->format('Y-m-d'),'views'=>2,'finished'=>0,'hidden'=>'hidden1'],
+//     ['title'=>'title5', 'body'=>'good','author_id'=>1,'date'=>$today->format('Y-m-d'),'views'=>3,'finished'=>1,'hidden'=>null],
+//     ['title'=>'title6', 'body'=>'good','author_id'=>2,'date'=>$today->format('Y-m-d'),'views'=>6,'finished'=>1,'hidden'=>'hidden3'],
 // ];
-// $post->editWith($data)->saveUpdate();
 
-// print_r($post->toArray());
+// $count = Post::insertAll($data);
+// echo 'count:'.$count.PHP_EOL;
+// $data = [
+//     'body'=>'soso'
+// ];
+// $post = Post::updateAll(['finished'=>false], $data);
 
+$posts = Post::paginate(2);
 
+foreach ($posts as $key => $post) {
+    echo $post->title . PHP_EOL;
+}
 
+?>
+<!DOCTYPE html>
+<html lang="en">
 
-// $post = Post::findFirst();
-// print_r($post);
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Paginator</title>
+</head>
 
-// $posts = Post::findMany();
-// print_r($posts);
+<body>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>title</th>
+                <th>body</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($posts as $row): ?>
+            <tr>
+                <td><?= $row->id ?>
+                </td>
+                <td><?= $row->title ?>
+                </td>
+                <td><?= $row->body ?>
+                </td>
+                <td><?= $row->date ?>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+    <?php $posts->showLinks(); ?>
+</body>
 
-
-// $posts = Post::where('id', '1')->findMany();
-// print_r($posts);
-
-// $posts = Post::where('id', 'IN', [1,2])->findMany();
-// print_r($posts);
-
-// $posts = Post::where('id', '>', '2')->findMany();
-// print_r($posts);
-
-// $posts = Post::orderBy('id', 'DESC')->findMany();
-// print_r($posts);
-
-
-// $posts = Post::limit(2)->findMany();
-// print_r($posts);
-
-
-// $posts = Post::groupBy('author_id')->having('views > 4')->sum('views');
-// print_r($posts);
-
-// $posts = Post::count('views');
-// print($posts);
-
-
-// $posts = Post::max('views');
-// print($posts);
-
-// $exists = Post::where('author_id', 1)->Where('hidden', 'IS', null)->exists();
-// print($exists);
-
-// $posts = Post::where('body', 'good')->orWhere('finished', 1)->min('views');
-// print_r($posts);
-
-// $sql = Post::where('body', 'good')->orWhere('finished', 1)->toSql();
-// print($sql);
-
-// $posts = Post::find('id IN (1,5,10)');
-// print_r($posts);
-
-// $post = new Post();
-
-// $post->title = 'How to cook pizza';
-// $post->date = (new DateTime())->format("Y-m-d");
-// $post->finished = false;
-
-// $post->saveNew();
-
-// echo "new post id: " .$post->id;
+</html>

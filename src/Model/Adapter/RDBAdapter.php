@@ -26,6 +26,27 @@ class RDBAdapter implements DbAdapter
 
         return false;
     }
+
+    public static function bulkInsert($table, $query)
+    {
+        $fields = array_keys($query['data'][0]);
+
+        foreach ($query['data'] as $row) {
+            $arrayValues = array_values($row);
+            $VALUES[] = '("' . implode('","', $arrayValues) . '") ';
+        }
+
+        $sql = 'INSERT INTO ' . $table . '(' . implode(",", $fields) .
+        ') VALUES' . implode(',', $VALUES);
+
+        $stmt = static::$dbh->prepare($sql);
+        $result = $stmt->execute();
+        static::checkError($stmt);
+
+        return $stmt->rowCount();
+    }
+
+
     public static function select($table, $query, $toSql = false)
     {
         if (empty($query['select'])) {

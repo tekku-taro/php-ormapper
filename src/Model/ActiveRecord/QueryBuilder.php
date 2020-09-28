@@ -10,7 +10,7 @@ class QueryBuilder
 
     protected $query = [];
 
-    protected $queryStringKeys = ['curPage', 'max'];
+    protected $queryStringKeys = ['curPage'=>0, 'max'=>0];
 
     public function __construct($tableName, $modelClass)
     {
@@ -120,8 +120,9 @@ class QueryBuilder
     {
         $pageInfo = $this->loadPageInfoFromQueryString($limit);
         $this->query['limit'] = $limit;
+        $this->query['select'] = null;
         $this->query['offset'] = $pageInfo['curPage'] * $limit;
-        $stmt = RDBAdapter::select(static::$tableName, $this->query);
+        $stmt = RDBAdapter::select($this->tableName, $this->query);
         if ($stmt) {
             $collection = $this->modelClass::getCollection($stmt->fetchAll(\PDO::FETCH_ASSOC));
 
@@ -133,13 +134,24 @@ class QueryBuilder
     protected function loadPageInfoFromQueryString($limit)
     {
         $queries = [];
-        $pageInfo['pageSize'] = $limit;
-        parse_str($_SERVER['QUERY_STRING'], $queries);
-        foreach ($this->queryStringKeys as $key) {
-            if (isset($queries[$key])) {
-                $pageInfo[$key] = $queries[$key];
+        $pageInfo = [
+            'pageSize' => $limit,
+            'curPage' => 0,
+            'max' => 0
+        ];
+        if (isset($_SERVER['QUERY_STRING'])) {
+            parse_str($_SERVER['QUERY_STRING'], $queries);
+            if (isset($queries['curPage'])) {
+                $pageInfo['curPage'] = $queries['curPage'];
             }
+            if (isset($queries['max'])) {
+                $pageInfo['max'] = $queries['max'];
+            }
+        } else {
+            $pageInfo['max'] = floor($this->count() / $limit)  - 1;
         }
+
+        
         $pageInfo['url'] = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
         return $pageInfo;

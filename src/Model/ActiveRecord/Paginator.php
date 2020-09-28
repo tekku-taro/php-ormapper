@@ -12,11 +12,11 @@ class Paginator implements \IteratorAggregate
     ];
 
 
-    public $nextChar = '>';
-    public $prevChar = '<';
-    public $lastChar = '>>';
-    public $firstChar = '<<';
-    public $separator = '|';
+    public $nextChar = '&gt;';
+    public $prevChar = '&lt;';
+    public $lastChar = '&gt;&gt;';
+    public $firstChar = '&lt;&lt;';
+    public $separator = ' | ';
 
     public function __construct(array $collection, $pageInfo = [])
     {
@@ -36,11 +36,11 @@ class Paginator implements \IteratorAggregate
             return '';
         }
 
-        $html = '<div class="pagination"><ul>' .
-        implode($this->pageInfo['separator'], $anchors) .
-        '</ul></div>';
+        $html = '<div class="pagination">' .
+        implode($this->separator, $anchors) .
+        '</div>';
 
-        return $html;
+        print $html;
     }
 
     protected function generateAnchors()
@@ -53,25 +53,31 @@ class Paginator implements \IteratorAggregate
         $anchors = [];
         $queryString = '?' . 'max=' .$max;
 
-        $anchors[] = '<li><a href="'. $this->pageInfo['url'] . $queryString . '&curPage=0" >' .
-        $this->firstChar . '</a></li>';
+
         if ($curPage > 0) {
-            $anchors[] = '<li><a href="'. $this->pageInfo['url'] . $queryString . '&curPage='.($curPage -1) .'" >' .
-            $this->prevChar  . '</a></li>';
+            $anchors[] = '<a href="'. $this->pageInfo['url'] . $queryString . '&curPage=0" >' .
+            $this->firstChar . '</a>';
+            $anchors[] = '<a href="'. $this->pageInfo['url'] . $queryString . '&curPage='.($curPage -1) .'" >' .
+            $this->prevChar  . '</a>';
         }
 
         for ($i=0; $i < $this->pageInfo['max'] + 1; $i++) {
-            $anchors[] = '<li><a href="'. $this->pageInfo['url'] . $queryString . '&curPage='.$i .'" >' .
-            ($i+1) . '</a></li>';
+            if ($i == $curPage) {
+                $anchors[] = ($i+1);
+            } else {
+                $anchors[] = '<a href="'. $this->pageInfo['url'] . $queryString . '&curPage='.$i .'" >' .
+                ($i+1) . '</a>';
+            }
         }
 
         if ($max > $curPage) {
-            $anchors[] = '<li><a href="'. $this->pageInfo['url'] . $queryString . '&curPage='.($curPage+1) .'" >' .
-            $this->nextChar  . '</a></li>';
+            $anchors[] = '<a href="'. $this->pageInfo['url'] . $queryString . '&curPage='.($curPage+1) .'" >' .
+            $this->nextChar  . '</a>';
+            $anchors[] = '<a href="'. $this->pageInfo['url'] . $queryString . '&curPage='.$max.'" >' .
+            $this->lastChar  . '</a>';
         }
 
-        $anchors[] = '<li><a href="'. $this->pageInfo['url'] . $queryString . '&curPage='.$max.'" >' .
-        $this->lastChar  . '</a></li>';
+
 
         return $anchors;
     }
