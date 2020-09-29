@@ -3,9 +3,12 @@ namespace ORM\Model\ActiveRecord;
 
 use \ORM\Model\Adapter\RDBAdapter;
 use \ORM\Model\ActiveRecord\QueryBuilder;
+use \ORM\Model\ActiveRecord\Relationships\RelationBuilder;
 
 class Model implements Entity
 {
+    use RelationBuilder;
+
     protected static $tableName;
 
     protected static $insertable = [];
@@ -15,6 +18,20 @@ class Model implements Entity
     protected $originals = [];
     protected $dirties = [];
     
+    protected static function getTableName()
+    {
+        if (empty(static::$tableName)) {
+            static::$tableName = static::guessTableName(get_called_class());
+        }
+        return static::$tableName;
+    }
+
+
+    protected static function guessTableName($className)
+    {
+        $table = preg_replace('/([A-Z])/', '_$1', $className);
+        return ltrim(strtolower($table) . 's', '_');
+    }
 
     protected function getPorperties()
     {
@@ -66,7 +83,7 @@ class Model implements Entity
             'data' => $properties
         ];
 
-        $id = RDBAdapter::insert(static::$tableName, $query);
+        $id = RDBAdapter::insert(static::getTableName(), $query);
         if ($id) {
             $this->clearDirties();
             $this->originals['id'] = $id;
@@ -93,7 +110,7 @@ class Model implements Entity
                 ['AND','id = ' . $this->originals['id']]
             ]
         ];
-        $result = RDBAdapter::update(static::$tableName, $query);
+        $result = RDBAdapter::update(static::getTableName(), $query);
         if ($result) {
             $this->clearDirties();
         } else {
@@ -109,7 +126,7 @@ class Model implements Entity
             'data' => $insertData
         ];
 
-        $id = RDBAdapter::insert(static::$tableName, $query);
+        $id = RDBAdapter::insert(static::getTableName(), $query);
         if ($id) {
             $insertData['id'] = $id;
             return static::morph($insertData);
@@ -174,7 +191,7 @@ class Model implements Entity
         }
         $whereClause = ['AND','id = ' . $this->originals['id']];
         $query['where'][] = $whereClause;
-        return RDBAdapter::delete(static::$tableName, $query);
+        return RDBAdapter::delete(static::getTableName(), $query);
     }
 
     public static function __callStatic($method, $args)
@@ -191,7 +208,7 @@ class Model implements Entity
 
     public static function buildQuery($method, ...$args)
     {
-        $query = new QueryBuilder(static::$tableName, get_called_class());
+        $query = new QueryBuilder(static::getTableName(), get_called_class());
 
         return $query->{$method}(...$args);
     }
@@ -207,7 +224,7 @@ class Model implements Entity
             'bulk'=>true,
         ];
 
-        return RDBAdapter::bulkInsert(static::$tableName, $query);
+        return RDBAdapter::bulkInsert(static::getTableName(), $query);
     }
 
     public static function updateAll($search = [], $setData, $updateAllRecord = false)
@@ -227,7 +244,7 @@ class Model implements Entity
 
         $query['data'] = $setData;
 
-        return RDBAdapter::update(static::$tableName, $query);
+        return RDBAdapter::update(static::getTableName(), $query);
     }
 
     public static function deleteAll($search = [], $deleteAllRecord = false)
@@ -240,7 +257,7 @@ class Model implements Entity
             return 0;
         }
 
-        return RDBAdapter::delete(static::$tableName, $query);
+        return RDBAdapter::delete(static::getTableName(), $query);
     }
 
     public function toArray()

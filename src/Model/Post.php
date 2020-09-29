@@ -11,17 +11,4 @@ class Post extends Model
 
     protected static $hiddenField = ['hidden'];
 
-    // public $id;
-
-    // public $title;
-  
-    // public $body;
-  
-    // public $author_id;
-  
-    // public $date;
-  
-    // public $views;
-  
-    // public $finished;
 }

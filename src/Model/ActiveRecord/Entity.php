@@ -27,6 +27,7 @@ interface Entity
     public function __set($name, $value);
     public function __get($name);
 
+    public static function insertAll(array $recArray);
     public static function updateAll($search = [], $setData, $updateAllRecord = false);
     public static function deleteAll($search = [], $deleteAllRecord = false);
 }
