@@ -1,13 +1,15 @@
 <?php
 namespace ORM\Model\Adapter;
 
+use ORM\config\DbConfig;
+
 class RDBAdapter implements DbAdapter
 {
-    protected static $dbh;
-    protected static $config;
+    protected static $defaultDb;
+    protected static $dbHandlers = [];
 
 
-    public static function insert($table, $query)
+    public static function insert($table, $query, $dbName = null)
     {
         $fields = array_keys($query['data']);
         $values = array_values($query['data']);
@@ -17,9 +19,9 @@ class RDBAdapter implements DbAdapter
         $sql = 'INSERT INTO ' . $table . '(' . implode(",", $fields) .
         ') VALUES(' . implode(',', $placeholders) . ') ';
 
-        $stmt = static::$dbh->prepare($sql);
+        $stmt = static::getInstance($dbName)->prepare($sql);
         if ($stmt->execute($values)) {
-            return static::$dbh->lastInsertId();
+            return static::getInstance($dbName)->lastInsertId();
         }
 
         static::checkError($stmt);
@@ -27,7 +29,7 @@ class RDBAdapter implements DbAdapter
         return false;
     }
 
-    public static function bulkInsert($table, $query)
+    public static function bulkInsert($table, $query, $dbName = null)
     {
         $fields = array_keys($query['data'][0]);
 
@@ -39,7 +41,7 @@ class RDBAdapter implements DbAdapter
         $sql = 'INSERT INTO ' . $table . '(' . implode(",", $fields) .
         ') VALUES' . implode(',', $VALUES);
 
-        $stmt = static::$dbh->prepare($sql);
+        $stmt = static::getInstance($dbName)->prepare($sql);
         $result = $stmt->execute();
         static::checkError($stmt);
 
@@ -47,7 +49,7 @@ class RDBAdapter implements DbAdapter
     }
 
 
-    public static function select($table, $query, $toSql = false)
+    public static function select($table, $query, $toSql = false, $dbName = null)
     {
         if (empty($query['select'])) {
             $select = '*';
@@ -62,7 +64,7 @@ class RDBAdapter implements DbAdapter
             return $sql;
         }
 
-        $stmt = static::$dbh->prepare($sql);
+        $stmt = static::getInstance($dbName)->prepare($sql);
         $result = $stmt->execute();
         if ($result) {
             static::checkError($stmt);
@@ -72,7 +74,7 @@ class RDBAdapter implements DbAdapter
     }
 
 
-    public static function update($table, $query)
+    public static function update($table, $query, $dbName = null)
     {
         $fieldValues = [];
         $values = [];
@@ -83,19 +85,19 @@ class RDBAdapter implements DbAdapter
         $sql = 'UPDATE ' . $table . ' SET ' . implode(",", $fieldValues)  .
         static::buildQuery($query) ;
 
-        $stmt = static::$dbh->prepare($sql);
+        $stmt = static::getInstance($dbName)->prepare($sql);
         $result = $stmt->execute($values);
         static::checkError($stmt);
 
         return $result;
     }
     
-    public static function delete($table, $query)
+    public static function delete($table, $query, $dbName = null)
     {
         $sql = 'DELETE FROM ' . $table .
         static::buildQuery($query) ;
 
-        $stmt = static::$dbh->prepare($sql);
+        $stmt = static::getInstance($dbName)->prepare($sql);
         $result = $stmt->execute();
         static::checkError($stmt);
 
@@ -162,34 +164,55 @@ class RDBAdapter implements DbAdapter
         } catch (\Exception $e) {
             throw new \Exception('Error creating a database connection. ');
         }
-
-        static::$config = $config;
         
         return $db;
     }
 
-    public static function init($config)
+    public static function init($dbName = null)
     {
-        if (static::$dbh == null) {
-            static::$dbh = static::connect($config);
+        if (empty($dbName)) {
+            $dbName = static::$defaultDb;
+        } else {
+            static::$defaultDb = DbConfig::getDefault();
+        }
+        $config = DbConfig::getDbInfo();
+        static::setInstance(static::connect($config), static::$defaultDb);
+
+        return static::getInstance($dbName);
+    }
+
+    public static function getInstance($dbName = null)
+    {
+        if (empty($dbName)) {
+            $dbName = static::$defaultDb;
+        }
+        if (!isset(static::$dbHandlers[$dbName])) {
+            $config = DbConfig::getDbInfo($dbName);
+            $dbh = static::connect($config);
+            static::setInstance($dbh, $dbName);
         }
 
-        return static::$dbh;
+        return static::$dbHandlers[$dbName];
     }
 
-    public static function getInstance()
+    protected static function setInstance($dbh, $dbName)
     {
-        if (static::$dbh == null) {
-            static::$dbh = static::connect(static::$config);
+        static::$dbHandlers[$dbName] = $dbh;
+    }
+
+    public static function disconnect($dbName = null)
+    {
+        if (empty($dbName)) {
+            $dbName = static::$defaultDb;
         }
-
-        return static::$dbh;
+        static::setInstance(null, $dbName);
     }
 
-    public static function disconnect()
+    public static function changeDefault($dbName)
     {
-        static::$dbh = null;
+        static::$defaultDb = $dbName;
     }
+
 
     public static function raw($sql)
     {

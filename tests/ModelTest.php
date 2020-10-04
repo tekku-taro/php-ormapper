@@ -8,14 +8,15 @@ class ModelTest extends TestCase
 {
     public static function setUpBeforeClass():void
     {
-        $config = [
-            'CONNECTION'=>'mysql',
-            'HOST'=>'localhost',
-            'DB_NAME'=>'tasksdb',
-            'USERNAME'=>'root',
-            'PASSWORD'=>null,
-        ];
-        RDBAdapter::init($config);
+        // $config = [
+        //     'CONNECTION'=>'mysql',
+        //     'HOST'=>'localhost',
+        //     'DB_NAME'=>'tasksdb',
+        //     'USERNAME'=>'root',
+        //     'PASSWORD'=>null,
+        // ];
+        $dbName = 'mysql';
+        RDBAdapter::init($dbName); 
         RDBAdapter::delete('posts', []);
     }
 

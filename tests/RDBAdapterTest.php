@@ -14,6 +14,7 @@ class RDBAdapterTest extends TestCase
             'USERNAME'=>'root',
             'PASSWORD'=>null,
         ];
+        $this->dbName = 'mysql';
     }
 
     public function tearDown():void
@@ -22,7 +23,7 @@ class RDBAdapterTest extends TestCase
 
     protected function setupConnection()
     {
-        RDBAdapter::init($this->config);
+        RDBAdapter::init($this->dbName);
     }
 
     protected function disconnectAfterTest()
@@ -88,7 +89,7 @@ class RDBAdapterTest extends TestCase
 
     public function testInit()
     {
-        $dbh = RDBAdapter::init($this->config);
+        $dbh = RDBAdapter::init($this->dbName);
         $expected = \PDO::class;
         $this->assertInstanceOf($expected, $dbh);
     }
@@ -104,10 +105,14 @@ class RDBAdapterTest extends TestCase
     {
         $dbh = RDBAdapter::disconnect();
         $class = new \ReflectionClass(RDBAdapter::class);
-        $property = $class->getProperty('dbh');
+        $property = $class->getProperty('dbHandlers');
+        $property2 = $class->getProperty('defaultDb');
         $property->setAccessible(true);
+        $property2->setAccessible(true);
+        $dbhs = $property->getValue();
 
-        $this->assertNull($property->getValue());
+        $dbName = $property2->getValue();
+        $this->assertNull($dbhs[$dbName]);
     }
 
 

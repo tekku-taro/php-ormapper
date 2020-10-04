@@ -3,15 +3,10 @@ require_once 'vendor/autoload.php';
 
 use ORM\Model\Post;
 use ORM\Model\Adapter\RDBAdapter;
+use ORM\Model\DB\RDB;
 
-$config = [
-    'CONNECTION'=>'mysql',
-    'HOST'=>'localhost',
-    'DB_NAME'=>'tasksdb',
-    'USERNAME'=>'root',
-    'PASSWORD'=>null,
-];
-RDBAdapter::init($config);
+$dbName = 'mysql';
+RDBAdapter::init($dbName);
 
 // $today = new DateTime();
 // $data = [

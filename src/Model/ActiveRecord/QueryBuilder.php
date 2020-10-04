@@ -7,15 +7,23 @@ use ORM\Model\ActiveRecord\Paginator;
 class QueryBuilder
 {
     protected $tableName;
+    protected $modelClass;
+    protected $dbName;
 
     protected $query = [];
 
     protected $queryStringKeys = ['curPage'=>0, 'max'=>0];
 
-    public function __construct($tableName, $modelClass)
+    public function __construct($tableName, $modelClass, $dbName = null)
     {
         $this->tableName = $tableName;
         $this->modelClass = $modelClass;
+        $this->dbName = $dbName;
+    }
+
+    public function execSelect($tableName, $query, $toSql = null)
+    {
+        return RDBAdapter::select($tableName, $query, $toSql, $this->dbName);
     }
 
     public function clearQuery()
@@ -26,7 +34,7 @@ class QueryBuilder
     public function findFirst()
     {
         $this->query['limit'] = 1;
-        $stmt = RDBAdapter::select($this->tableName, $this->query);
+        $stmt = $this->execSelect($this->tableName, $this->query);
         if ($stmt) {
             $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
             if (!empty($result)) {
@@ -37,7 +45,7 @@ class QueryBuilder
     }
     public function findMany()
     {
-        $stmt = RDBAdapter::select($this->tableName, $this->query);
+        $stmt = $this->execSelect($this->tableName, $this->query);
         if ($stmt) {
             return $this->modelClass::getCollection($stmt->fetchAll(\PDO::FETCH_ASSOC));
         }
@@ -46,7 +54,7 @@ class QueryBuilder
 
     public function toSql()
     {
-        return RDBAdapter::select($this->tableName, $this->query, true);
+        return $this->execSelect($this->tableName, $this->query, true);
     }
 
     public function count($field = null)
@@ -81,7 +89,7 @@ class QueryBuilder
         }
         $this->query['select'][] = ' ' . $method . '(' . $field . ') AS ' . $alius;
 
-        $result = RDBAdapter::select($this->tableName, $this->query)->fetchAll(\PDO::FETCH_ASSOC);
+        $result = $this->execSelect($this->tableName, $this->query)->fetchAll(\PDO::FETCH_ASSOC);
         print_r($result);
         return $this->sortAggregtated($result, $alius);
     }
@@ -122,7 +130,7 @@ class QueryBuilder
         $this->query['limit'] = $limit;
         $this->query['select'] = null;
         $this->query['offset'] = $pageInfo['curPage'] * $limit;
-        $stmt = RDBAdapter::select($this->tableName, $this->query);
+        $stmt = $this->execSelect($this->tableName, $this->query);
         if ($stmt) {
             $collection = $this->modelClass::getCollection($stmt->fetchAll(\PDO::FETCH_ASSOC));
 
