@@ -52,7 +52,7 @@ class RDBAdapter implements DbAdapter
     public static function select($table, $query, $toSql = false, $dbName = null)
     {
         if (empty($query['select'])) {
-            $select = '*';
+            $select = $table . '.' . '*';
         } else {
             $select = implode(',', $query['select']) ;
         }
@@ -129,6 +129,9 @@ class RDBAdapter implements DbAdapter
     protected static function buildQuery($query)
     {
         $sql = '';
+        if (!empty($query['join'])) {
+            $sql .= implode(' ', $query['join']) ;
+        }
         if (!empty($query['where'])) {
             $sql .= ' WHERE ';
             $sql .= static::buildWhere($query['where']) ;

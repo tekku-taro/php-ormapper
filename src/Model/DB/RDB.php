@@ -2,7 +2,6 @@
 namespace ORM\Model\DB;
 
 use \ORM\Model\Adapter\RDBAdapter;
-use \ORM\config\DbConfig;
 use ORM\Model\ActiveRecord\QueryBuilder;
 use PDO;
 use ReflectionClass;

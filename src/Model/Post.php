@@ -10,5 +10,8 @@ class Post extends Model
     protected static $insertable = ['title', 'body', 'author_id', 'date','views','finished','hidden'];
 
     protected static $hiddenField = ['hidden'];
-
+    
+    protected $relations = [
+        'user'=>[User::class,'belongsTo' ,'user_id'],
+    ];
 }

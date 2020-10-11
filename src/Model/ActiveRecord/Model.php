@@ -17,6 +17,11 @@ class Model implements Entity
     
     protected $originals = [];
     protected $dirties = [];
+
+    protected $relations = [
+        // 'リレーション名' => [モデル::class,'タイプ' ,'外部キー'],
+        // 'リレーション名' => [モデル::class,'belongsToMany' , '中間テーブル', '自モデルのID', '関連モデルのID']
+    ];
     
     protected static function getTableName()
     {

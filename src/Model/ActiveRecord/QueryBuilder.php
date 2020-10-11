@@ -168,7 +168,7 @@ class QueryBuilder
     public function select(array $fields)
     {
         foreach ($fields as $field) {
-            $this->query['select'][] = $field;
+            $this->query['select'][] = $this->tableName . '.' . $field;
         }
 
         return $this;

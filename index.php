@@ -3,7 +3,6 @@ require_once 'vendor/autoload.php';
 
 use ORM\Model\Post;
 use ORM\Model\Adapter\RDBAdapter;
-use ORM\Model\DB\RDB;
 
 $dbName = 'mysql';
 RDBAdapter::init($dbName);
