@@ -36,10 +36,11 @@ class QueryBuilder
         $this->query['limit'] = 1;
         $stmt = $this->execSelect($this->tableName, $this->query);
         if ($stmt) {
-            $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-            if (!empty($result)) {
-                return $this->modelClass::morph($result[0]);
-            }
+            return $this->morphToModel($stmt, false);
+            // $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            // if (!empty($result)) {
+            //     return $this->modelClass::morph($result[0]);
+            // }
         }
         return false;
     }
@@ -47,7 +48,7 @@ class QueryBuilder
     {
         $stmt = $this->execSelect($this->tableName, $this->query);
         if ($stmt) {
-            return $this->modelClass::getCollection($stmt->fetchAll(\PDO::FETCH_ASSOC));
+            return $this->morphToModel($stmt, true);
         }
         return false;
     }
@@ -132,7 +133,8 @@ class QueryBuilder
         $this->query['offset'] = $pageInfo['curPage'] * $limit;
         $stmt = $this->execSelect($this->tableName, $this->query);
         if ($stmt) {
-            $collection = $this->modelClass::getCollection($stmt->fetchAll(\PDO::FETCH_ASSOC));
+            $collection = $this->morphToModel($stmt, true);
+            // $collection = $this->modelClass::getCollection($stmt->fetchAll(\PDO::FETCH_ASSOC));
 
             return new Paginator($collection, $pageInfo);
         }
@@ -163,6 +165,18 @@ class QueryBuilder
         $pageInfo['url'] = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
         return $pageInfo;
+    }
+
+    protected function morphToModel($stmt, $useCollect = false)
+    {
+        if (!$useCollect) {
+            $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            if (!empty($result)) {
+                return $this->modelClass::morph($result[0]);
+            }
+        } else {
+            return $this->modelClass::getCollection($stmt->fetchAll(\PDO::FETCH_ASSOC));
+        }
     }
 
     public function select(array $fields)
