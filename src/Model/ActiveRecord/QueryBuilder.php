@@ -37,10 +37,6 @@ class QueryBuilder
         $stmt = $this->execSelect($this->tableName, $this->query);
         if ($stmt) {
             return $this->morphToModel($stmt, false);
-            // $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-            // if (!empty($result)) {
-            //     return $this->modelClass::morph($result[0]);
-            // }
         }
         return false;
     }
@@ -134,7 +130,6 @@ class QueryBuilder
         $stmt = $this->execSelect($this->tableName, $this->query);
         if ($stmt) {
             $collection = $this->morphToModel($stmt, true);
-            // $collection = $this->modelClass::getCollection($stmt->fetchAll(\PDO::FETCH_ASSOC));
 
             return new Paginator($collection, $pageInfo);
         }

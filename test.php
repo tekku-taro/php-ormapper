@@ -12,6 +12,11 @@ RDBAdapter::init($dbName);
 $user = User::where('id', 1)->findFirst();
 // 関連モデルのrelationModels追加テスト
 
+// eagerloading N+1
+$user = User::with(['posts'])->where('id', 1)->findFirst();
+var_dump($user);
+
+
 // 動的プロパティのテスト
 $posts = $user->posts;
 var_dump($posts);
@@ -27,6 +32,6 @@ var_dump($user);
 // var_dump($posts) ;
 
 
-
-$posts= $user->relation('favorites')->findMany();
+// appendPivot()
+$posts= $user->appendPivot(['star'])->relation('favorites')->findMany();
 var_dump($posts) ;

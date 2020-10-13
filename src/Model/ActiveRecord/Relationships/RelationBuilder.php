@@ -35,8 +35,16 @@ trait RelationBuilder
 
 
         // 呼び出し元のモデルを格納
-        $this->relationModels[$relationName] = $data['parentModel'];
-
+        if (isset($data['parentModel'])) {
+            $this->relationModels[$relationName] = $data['parentModel'];
+        }
+        return $this;
+    }
+    
+    public function setRelationModels($relationModels)
+    {
+        // 関連モデルを格納
+        $this->relationModels += $relationModels;
         return $this;
     }
 
@@ -88,25 +96,25 @@ trait RelationBuilder
         }
     }
 
-    public function hasMany($className, $foreignKey = null)
+    protected function hasMany($className, $foreignKey = null)
     {
         $relation = $this->initRelation($className, $foreignKey, 'hasMany');
         return $relation->buildWhere();
     }
 
-    public function belongsTo($className, $foreignKey = null)
+    protected function belongsTo($className, $foreignKey = null)
     {
         $relation = $this->initRelation($className, $foreignKey, 'belongsTo');
         return $relation->buildWhere();
     }
 
-    public function hasOne($className, $foreignKey = null)
+    protected function hasOne($className, $foreignKey = null)
     {
         $relation = $this->initRelation($className, $foreignKey, 'hasOne');
         return $relation->buildWhere();
     }
 
-    public function belongsToMany($className, $pivotTable, $foreignKey, $relatedKey)
+    protected function belongsToMany($className, $pivotTable, $foreignKey, $relatedKey)
     {
         $relation = $this->initRelationWithPivot($className, $pivotTable, $foreignKey, $relatedKey, 'belongsToMany');
 
