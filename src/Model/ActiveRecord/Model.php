@@ -2,7 +2,7 @@
 namespace ORM\Model\ActiveRecord;
 
 use \ORM\Model\Adapter\RDBAdapter;
-use \ORM\Model\ActiveRecord\QueryBuilder;
+use \ORM\Model\ActiveRecord\Relationships\Relation;
 use \ORM\Model\ActiveRecord\Relationships\RelationBuilder;
 
 class Model implements Entity
@@ -201,7 +201,7 @@ class Model implements Entity
 
     public static function __callStatic($method, $args)
     {
-        $class = QueryBuilder::class;
+        $class = Relation::class;
         if (is_callable([$class, $method])) {
             return static::buildQuery($method, ...$args);
         }
@@ -213,7 +213,7 @@ class Model implements Entity
 
     public static function buildQuery($method, ...$args)
     {
-        $query = new QueryBuilder(static::getTableName(), get_called_class());
+        $query = new Relation(static::getTableName(), get_called_class());
 
         return $query->{$method}(...$args);
     }

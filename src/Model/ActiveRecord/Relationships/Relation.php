@@ -52,7 +52,7 @@ class Relation extends QueryBuilder
      *
      * @var array
      */
-    public $eagerLoadings;
+    public $eagerLoadings = [];
 
     public function getType()
     {
@@ -62,18 +62,28 @@ class Relation extends QueryBuilder
     public function with($relationNames)
     {
         $this->eagerLoadings += $relationNames;
+
+        return $this;
     }
 
     protected function morphToModel($stmt, $useCollect = false)
     {
         $result = parent::morphToModel($stmt, $useCollect);
-        if ($this->type == 'belongsToMany') {
+        if ($this->type == 'belongsToMany' && isset($this->parentModel)) {
             $data = [
                 'foreignKey'=>$this->foreignKey,
                 'relatedKey'=>$this->relatedKey ,
                 'parentModel'=>$this->parentModel,
                 'parentModelId'=>$this->parentModelId,
             ];
+        } elseif (empty($this->type) || empty($this->parentModel)) {
+            if (!$useCollect) {
+                $this->loadModels($result);
+            } else {
+                $this->loadModelsToCollection($result);
+            }
+
+            return $result;
         } else {
             $data = [
                 'parentModel'=>$this->parentModel,
@@ -82,11 +92,9 @@ class Relation extends QueryBuilder
 
         if (!$useCollect) {
             $parentRelationName = $this->getParentRelationName($result);
-            $this->loadModels($result);
             return $result->setPivotAndRelationModel($data, $parentRelationName);
         } else {
             $parentRelationName = $this->getParentRelationName($result[0]);
-            $this->loadModelsToCollection($result);
             return  array_map(function ($entity) use ($parentRelationName,$data) {
                 return $entity->setPivotAndRelationModel($data, $parentRelationName);
             }, $result);
@@ -122,16 +130,18 @@ class Relation extends QueryBuilder
                     break;
             }
             $idx = $foreignKeyIdxPairs[$foreignKey];
-            $collection[$idx]->setRelationModels([$relationName => $model]);
+            $collection[$idx]->setRelationModels([$relationName => [$model]]);
         }
     }
 
     protected function addModelToCollection(array &$collection, $relationName)
     {
         //各リレーションの情報（外部キー名）を取得
-        $relationClass = $this->relations[$relationName][0];
-        $type = $this->relations[$relationName][1];
-        $foreignKeyName = $this->relations[$relationName][2];
+        $entity = $collection[0];
+        $relationData = $entity->getRelationData($relationName);
+        $relationClass = $relationData[0];
+        $type = $relationData[1];
+        $foreignKeyName = $relationData[2];
 
         // モデル配列からリレーションの外部キーの値を取得
         // ['リレーション名'=>['外部キー'=>collectionの添え字],]
@@ -139,20 +149,22 @@ class Relation extends QueryBuilder
         switch ($type) {
             case 'hasMany':
                 [$foreignKeys,$foreignKeyIdxPairs] = $this->getForeignKeysFromCollection($collection, 'id');
-                $relationModels = $relationClass::where($foreignKeyName, 'IN', $foreignKeys)->get();
+                $relationModels = $relationClass::where($foreignKeyName, 'IN', $foreignKeys)->findMany();
                 break;
             case 'belongsTo':
                 [$foreignKeys,$foreignKeyIdxPairs] = $this->getForeignKeysFromCollection($collection, $foreignKeyName);
-                $relationModels = $relationClass::where('id', 'IN', $foreignKeys)->get();
+                $relationModels = $relationClass::where('id', 'IN', $foreignKeys)->findMany();
                 break;
             case 'belongsToMany':
                 $pivotTable = $foreignKeyName;
-                $foreignKeyName = $this->relations[$relationName][3];
-                $relatedKeyName = $this->relations[$relationName][4];
+                $foreignKeyName = $relationData[3];
+                $relatedKeyName = $relationData[4];
                 [$foreignKeys,$foreignKeyIdxPairs] = $this->getForeignKeysFromCollection($collection, 'id');
-                $relationModels = $relationClass::join($pivotTable, 'id', $relatedKeyName)
-                ->appendPivot([$foreignKeyName])
-                ->where($pivotTable.'.'.$foreignKeyName, 'IN', $foreignKeys)->get();
+                $query = $this->buildBelongsToManyQuery($foreignKeys, $relationClass, $pivotTable, $foreignKeyName, $relatedKeyName);
+                $relationModels = $query->appendPivot([$foreignKeyName])->findMany();
+                // $relationModels = $relationClass::join($pivotTable, 'id', $relatedKeyName)
+                // ->appendPivot([$foreignKeyName])
+                // ->where($pivotTable.'.'.$foreignKeyName, 'IN', $foreignKeys)->findMany();
                 break;
         }
         // 各モデルの外部キーから添え字を取得し、元のcollectionのモデルにrelationModelとして付加
@@ -235,10 +247,28 @@ class Relation extends QueryBuilder
     {
         $this->parentModel = isset($data['parentModel']) ? $data['parentModel'] : null;
         $this->parentModelId = isset($data['parentModelId']) ? $data['parentModelId'] : null;
+        $this->parentModelIds = isset($data['parentModelIds']) ? $data['parentModelIds'] : null;
         $this->type = isset($data['type']) ? $data['type'] : null;
         $this->foreignKey = isset($data['foreignKey']) ? $data['foreignKey'] : null;
         $this->pivotTable = isset($data['pivotTable']) ? $data['pivotTable'] : null;
         $this->relatedKey = isset($data['relatedKey']) ? $data['relatedKey'] : null;
+    }
+
+    protected function buildBelongsToManyQuery($parentIds, $className, $pivotTable, $foreignKey, $relatedKey)
+    {
+        [$relation,$tableName] = $className::getRelationAndTable($className);
+
+        $data = [
+            'parentModelIds'=>$parentIds,
+            'parentModel'=>null,
+            'type'=>'belongsToMany',
+            'foreignKey'=>$foreignKey,
+            'pivotTable'=> $pivotTable,
+            'relatedKey'=>$relatedKey
+        ];
+
+        $relation->setRelationdata($data);
+        return $relation->setBelongsToMany();
     }
 
     public function buildWhere()
@@ -267,8 +297,13 @@ class Relation extends QueryBuilder
     {
         // left join favorites on(posts.id = favorites.post_id)
         // WHERE favorites.user_id = 1
-        return $this->join($this->pivotTable, 'id', $this->relatedKey)
-             ->where($this->pivotTable . '.' . $this->foreignKey, $this->parentModelId);
+        if (!empty($this->parentModelIds)) {
+            return $this->join($this->pivotTable, 'id', $this->relatedKey)
+                 ->where($this->pivotTable . '.' . $this->foreignKey, 'IN', $this->parentModelIds);
+        } else {
+            return $this->join($this->pivotTable, 'id', $this->relatedKey)
+                 ->where($this->pivotTable . '.' . $this->foreignKey, $this->parentModelId);
+        }
     }
 
     public function execSelect($tableName, $query, $toSql = null)
@@ -287,7 +322,11 @@ class Relation extends QueryBuilder
     public function appendPivot(array $fields)
     {
         foreach ($fields as $field) {
-            $this->query['select'][] = $this->pivotTable . '.' . $field;
+            if (empty($this->pivotTable)) {
+                $this->query['pivot'] = $field;
+            } else {
+                $this->query['pivot'] = $this->pivotTable . '.' . $field;
+            }
         }
 
         return $this;

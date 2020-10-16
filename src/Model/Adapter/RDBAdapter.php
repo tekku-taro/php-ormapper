@@ -56,6 +56,10 @@ class RDBAdapter implements DbAdapter
         } else {
             $select = implode(',', $query['select']) ;
         }
+        if (!empty($query['pivot'])) {
+            $select .= ','. $query['pivot'];
+        }
+
         $sql = 'SELECT '. $select .' FROM ' . $table .
         static::buildQuery($query) ;
         print $sql . PHP_EOL;

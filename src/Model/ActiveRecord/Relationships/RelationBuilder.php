@@ -44,8 +44,23 @@ trait RelationBuilder
     public function setRelationModels($relationModels)
     {
         // 関連モデルを格納
-        $this->relationModels += $relationModels;
+        foreach ($relationModels as $relationName => $modelArray) {
+            if (isset($this->relationModels[$relationName])) {
+                array_push($this->relationModels[$relationName], ...$modelArray);
+            } else {
+                $this->relationModels[$relationName] = $modelArray;
+            }
+        }
         return $this;
+    }
+
+    public function getRelationData($relationName)
+    {
+        // 'user'=>[User::class,'belongsTo' ,'user_id'],
+        if (isset($this->relations[$relationName])) {
+            return $this->relations[$relationName];
+        }
+        return null;
     }
 
     public function getRelationName($relationClass, $type)
@@ -59,6 +74,12 @@ trait RelationBuilder
         }
 
         return null;
+    }
+
+    public static function getRelationAndTable($className)
+    {
+        $tableName = static::guessTableName(substr(strrchr($className, '\\'), 1));
+        return [new Relation($tableName, $className),$tableName];
     }
 
     //動的プロパティ
@@ -123,8 +144,7 @@ trait RelationBuilder
 
     protected function initRelationWithPivot($className, $pivotTable, $foreignKey, $relatedKey, $typeName)
     {
-        $tableName = static::guessTableName(substr(strrchr($className, '\\'), 1));
-        $relation = new Relation($tableName, $className);
+        [$relation,$tableName] = static::getRelationAndTable($className);
 
         $data = [
             'parentModelId'=>$this->id,
@@ -142,8 +162,7 @@ trait RelationBuilder
 
     protected function initRelation($className, $foreignKey, $typeName)
     {
-        $tableName = static::guessTableName(substr(strrchr($className, '\\'), 1));
-        $relation = new Relation($tableName, $className);
+        [$relation,$tableName] = static::getRelationAndTable($className);
 
         $data = [
             'parentModelId'=>$this->id,
@@ -157,7 +176,7 @@ trait RelationBuilder
         return $relation;
     }
 
-    protected function checkForeign($tableName, $foreignKey)
+    protected function checkForeign($tableName, $foreignKey = null)
     {
         if (empty($foreignKey)) {
             return rtrim($tableName, 's') . '_id';
