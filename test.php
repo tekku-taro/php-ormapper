@@ -23,7 +23,13 @@ User::insertAll($data);
 
 // $post = Post::findFirst();
 $user = User::where('id', 1)->findFirst();
+$post = Post::findFirst();
 
-// pivot操作のメソッドが必要
-// $user->relation('favorites')->couple($post_id,$data);
-// $user->relation('favorites')->deCouple($post_id);
+// pivot操作のメソッド
+$data = ['star'=>4];
+$user = $user->relation('favorites')->newPivot($post->id, $data);
+var_dump($user);
+$data = ['star'=>2];
+$user = $user->relation('favorites')->updatePivot($post->id, $data);
+var_dump($user);
+$user->relation('favorites')->removePivot($post->id);

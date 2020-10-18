@@ -59,6 +59,59 @@ class Relation extends QueryBuilder
         return $this->type;
     }
 
+    public function newPivot($relatedKeyVal, $data = [])
+    {
+        $insertData = [
+            $this->foreignKey => $this->parentModelId,
+            $this->relatedKey => $relatedKeyVal,
+            
+        ] + $data;
+        $query = [
+            'data' => $insertData
+        ];
+
+        $id = RDBAdapter::insert($this->pivotTable, $query, $this->dbName);
+        if ($id) {
+            $this->parentModel->pivot = $insertData;
+            return $this->parentModel;
+        } else {
+            throw new \ErrorException('pivot record can not be saved!');
+        }
+    }
+
+    public function removePivot($relatedKeyVal)
+    {
+        if (empty($relatedKeyVal)) {
+            throw new \ErrorException('Provided related key is empty;');
+        }
+        $whereClauses[] = ['AND', $this->foreignKey . ' = ' . $this->parentModelId];
+        $whereClauses[] = ['AND', $this->relatedKey . ' = ' . $relatedKeyVal];
+        $query['where'] = $whereClauses;
+        return RDBAdapter::delete($this->pivotTable, $query);
+    }
+
+    public function updatePivot($relatedKeyVal, $data = [])
+    {
+        if (empty($data)) {
+            return false;
+        }
+        $whereClauses[] = ['AND', $this->foreignKey . ' = ' . $this->parentModelId];
+        $whereClauses[] = ['AND', $this->relatedKey . ' = ' . $relatedKeyVal];
+
+        $query = [
+            'data' => $data,
+            'where'=>$whereClauses
+        ];
+
+        $result = RDBAdapter::update($this->pivotTable, $query);
+        if ($result) {
+            $this->parentModel->pivot = array_merge($this->parentModel->pivot, $data) ;
+            return $this->parentModel;
+        } else {
+            throw new \ErrorException('pivot record can not be updated!');
+        }
+    }
+
     public function with($relationNames)
     {
         $this->eagerLoadings += $relationNames;
