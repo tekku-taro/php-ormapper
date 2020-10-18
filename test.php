@@ -7,36 +7,23 @@ use ORM\Model\Adapter\RDBAdapter;
 
 $dbName = 'mysql';
 RDBAdapter::init($dbName);
+$today = new DateTime();
+$data = [
+    ['id'=>1,'title'=>'title1', 'body'=>'bad','user_id'=>1,'date'=>$today->format('Y-m-d'),'views'=>2,'finished'=>0,'hidden'=>'hidden1'],
+    ['id'=>2,'title'=>'title2', 'body'=>'good','user_id'=>1,'date'=>$today->format('Y-m-d'),'views'=>3,'finished'=>1,'hidden'=>null],
+    ['id'=>3,'title'=>'title3', 'body'=>'good','user_id'=>2,'date'=>$today->format('Y-m-d'),'views'=>6,'finished'=>1,'hidden'=>'hidden3'],
+];
+Post::insertAll($data);
+$data = [
+    ['id'=>1,'name'=>'taro', 'email'=>'taro@post.com','password'=>'pass'],
+    ['id'=>2,'name'=>'hanako', 'email'=>'hanako@post.com','password'=>'pass'],
+];
+User::insertAll($data);
+
 
 // $post = Post::findFirst();
 $user = User::where('id', 1)->findFirst();
-// appendPivot()
-$posts= $user->relation('favorites')->appendPivot(['star'])->findMany();
-var_dump($posts) ;
 
-// eagerloading N+1
-$user = User::with(['posts'])->where('id', 1)->findFirst();
-var_dump($user);
-$user = User::with(['posts'])->where('id', 2)->findFirst();
-var_dump($user);
-// 複数の場合
-$users = User::with(['posts'])->findMany();
-var_dump($users);
-// 複数の場合（belongsToMany）
-$users = User::with(['favorites'])->findMany();
-var_dump($users);
-
-
-// 動的プロパティのテスト
-$posts = $user->posts;
-var_dump($posts);
-
-$posts = $user->favorites;
-$user = $posts[0]->favorites;
-var_dump($user);
-
-// $user = $post->relation('user')->findFirst();
-// echo $user->name;
-
-// $posts = $user->relation('posts')->findMany();
-// var_dump($posts) ;
+// pivot操作のメソッドが必要
+// $user->relation('favorites')->couple($post_id,$data);
+// $user->relation('favorites')->deCouple($post_id);

@@ -62,7 +62,7 @@ class RDBAdapter implements DbAdapter
 
         $sql = 'SELECT '. $select .' FROM ' . $table .
         static::buildQuery($query) ;
-        print $sql . PHP_EOL;
+        // print $sql . PHP_EOL;
 
         if ($toSql) {
             return $sql;
@@ -106,6 +106,17 @@ class RDBAdapter implements DbAdapter
         static::checkError($stmt);
 
         return $stmt->rowCount();
+    }
+
+    public static function truncate($table, $dbName = null)
+    {
+        $sql = 'TRUNCATE ' . $table;
+
+        $stmt = static::getInstance($dbName)->prepare($sql);
+        $result = $stmt->execute();
+        static::checkError($stmt);
+
+        return $result;
     }
 
     protected static function checkError($stmt)

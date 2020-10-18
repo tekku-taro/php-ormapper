@@ -26,6 +26,11 @@ class QueryBuilder
         return RDBAdapter::select($tableName, $query, $toSql, $this->dbName);
     }
 
+    public function truncate()
+    {
+        return RDBAdapter::truncate($this->tableName, $this->dbName);
+    }
+
     public function clearQuery()
     {
         $this->query = [];
@@ -87,7 +92,7 @@ class QueryBuilder
         $this->query['select'][] = ' ' . $method . '(' . $field . ') AS ' . $alius;
 
         $result = $this->execSelect($this->tableName, $this->query)->fetchAll(\PDO::FETCH_ASSOC);
-        print_r($result);
+        // print_r($result);
         return $this->sortAggregtated($result, $alius);
     }
 

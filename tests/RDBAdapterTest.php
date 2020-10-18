@@ -55,7 +55,7 @@ class RDBAdapterTest extends TestCase
             'data'=>[
                 'title'=>'test2',
                 'body'=>'body2',
-                'author_id'=>'2',
+                'user_id'=>'2',
                 'date'=>(new DateTime())->format('Y-m-d'),
                 'views'=>23,
                 'finished'=>0,

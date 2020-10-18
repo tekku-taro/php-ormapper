@@ -1,8 +1,6 @@
 <?php
 namespace ORM\Model\ActiveRecord\Relationships;
 
-use ORM\Model\ActiveRecord\QueryBuilder;
-
 trait RelationBuilder
 {
     /**

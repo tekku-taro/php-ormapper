@@ -7,7 +7,7 @@ class Post extends Model
 {
     protected static $tableName = 'posts';
 
-    protected static $insertable = ['title', 'body', 'author_id', 'date','views','finished','hidden'];
+    protected static $insertable = ['title', 'body', 'user_id', 'date','views','finished','hidden'];
 
     protected static $hiddenField = ['hidden'];
     

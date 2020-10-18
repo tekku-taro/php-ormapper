@@ -16,7 +16,7 @@ class ModelTest extends TestCase
         //     'PASSWORD'=>null,
         // ];
         $dbName = 'mysql';
-        RDBAdapter::init($dbName); 
+        RDBAdapter::init($dbName);
         RDBAdapter::delete('posts', []);
     }
 
@@ -24,9 +24,9 @@ class ModelTest extends TestCase
     {
         $today = new DateTime();
         $data = [
-            ['id'=>1,'title'=>'title1', 'body'=>'bad','author_id'=>1,'date'=>$today->format('Y-m-d'),'views'=>2,'finished'=>0,'hidden'=>'hidden1'],
-            ['id'=>2,'title'=>'title2', 'body'=>'good','author_id'=>1,'date'=>$today->format('Y-m-d'),'views'=>3,'finished'=>1,'hidden'=>null],
-            ['id'=>3,'title'=>'title3', 'body'=>'good','author_id'=>2,'date'=>$today->format('Y-m-d'),'views'=>6,'finished'=>1,'hidden'=>'hidden3'],
+            ['id'=>1,'title'=>'title1', 'body'=>'bad','user_id'=>1,'date'=>$today->format('Y-m-d'),'views'=>2,'finished'=>0,'hidden'=>'hidden1'],
+            ['id'=>2,'title'=>'title2', 'body'=>'good','user_id'=>1,'date'=>$today->format('Y-m-d'),'views'=>3,'finished'=>1,'hidden'=>null],
+            ['id'=>3,'title'=>'title3', 'body'=>'good','user_id'=>2,'date'=>$today->format('Y-m-d'),'views'=>6,'finished'=>1,'hidden'=>'hidden3'],
         ];
 
         foreach ($data as $row) {
@@ -129,15 +129,15 @@ class ModelTest extends TestCase
 
     public function testGroupBy()
     {
-        $result = Post::groupBy('author_id')->having('views > 4')->sum('views');
+        $result = Post::groupBy('user_id')->having('views > 4')->sum('views');
 
         $expected = [
             '1'=>[
-                'author_id'=>1,
+                'user_id'=>1,
                 'views'=>5
             ],
             '2'=>[
-                'author_id'=>2,
+                'user_id'=>2,
                 'views'=>6
             ],
         ];
@@ -165,7 +165,7 @@ class ModelTest extends TestCase
 
     public function testExists()
     {
-        $exists = Post::where('author_id', 1)->Where('hidden', 'IS', null)->exists();
+        $exists = Post::where('user_id', 1)->Where('hidden', 'IS', null)->exists();
 
         $expected = 1;
 
@@ -196,8 +196,8 @@ class ModelTest extends TestCase
     public function testToSql()
     {
         $sql = Post::where('body', 'good')->orWhere('finished', 1)->toSql();
-        
-        $expected = 'SELECT * FROM posts WHERE body = "good" OR finished = "1"';
+        'toSql: '. var_dump($sql);
+        $expected = 'SELECT posts.* FROM posts WHERE body = "good" OR finished = "1"';
 
         $this->assertEquals($expected, $sql);
     }
@@ -225,7 +225,7 @@ class ModelTest extends TestCase
         $post = Post::findFirst();
         $array = $post->toArray();
         $today = new DateTime();
-        $expected =  ['id'=>1,'title'=>'title1', 'body'=>'bad','author_id'=>1,'date'=>$today->format('Y-m-d') . " 00:00:00",'views'=>2,'finished'=>0,'hidden'=>'hidden1'];
+        $expected =  ['id'=>1,'title'=>'title1', 'body'=>'bad','user_id'=>1,'date'=>$today->format('Y-m-d') . " 00:00:00",'views'=>2,'finished'=>0,'hidden'=>'hidden1'];
 
         $this->assertEquals($expected, $array);
     }

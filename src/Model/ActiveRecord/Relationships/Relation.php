@@ -69,6 +69,9 @@ class Relation extends QueryBuilder
     protected function morphToModel($stmt, $useCollect = false)
     {
         $result = parent::morphToModel($stmt, $useCollect);
+        if (empty($result)) {
+            return $result;
+        }
         if ($this->type == 'belongsToMany' && isset($this->parentModel)) {
             $data = [
                 'foreignKey'=>$this->foreignKey,
@@ -308,7 +311,7 @@ class Relation extends QueryBuilder
 
     public function execSelect($tableName, $query, $toSql = null)
     {
-        return parent::execSelect($tableName, $query, $toSql = null);
+        return parent::execSelect($tableName, $query, $toSql);
     }
 
     
