@@ -25,11 +25,3 @@ User::insertAll($data);
 $user = User::where('id', 1)->findFirst();
 $post = Post::findFirst();
 
-// pivot操作のメソッド
-$data = ['star'=>4];
-$user = $user->relation('favorites')->newPivot($post->id, $data);
-var_dump($user);
-$data = ['star'=>2];
-$user = $user->relation('favorites')->updatePivot($post->id, $data);
-var_dump($user);
-$user->relation('favorites')->removePivot($post->id);

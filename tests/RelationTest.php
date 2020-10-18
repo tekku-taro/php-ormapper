@@ -117,4 +117,49 @@ class RelationTest extends TestCase
         $this->assertEquals($models['favorites'][0]->user_id, $user->id);
         $this->assertEquals($models['favorites'][1]->user_id, $user->id);
     }
+
+    public function testNewPivot()
+    {
+        $user = User::findFirst();
+        $user_id = $user->id;
+
+        // pivot操作のメソッド
+        $data = ['star'=>4];
+        $user = $user->relation('favorites')->newPivot(3, $data);
+        $this->assertTrue($this->seeInDatabase('favorites', [
+            'star'=>4,
+            'user_id'=>$user_id,
+            'post_id'=>3
+        ]));
+    }
+
+    public function testUpdatePivot()
+    {
+        $user = User::findFirst();
+        $user_id = $user->id;
+
+        $data = ['star'=>2];
+        $user = $user->relation('favorites')->updatePivot(2, $data);
+
+        $this->assertTrue($this->seeInDatabase('favorites', [
+            'star'=>2,
+            'user_id'=>$user_id,
+            'post_id'=>2
+        ]));
+    }
+
+    public function testRemovePivot()
+    {
+        $user = User::findFirst();
+        $user_id = $user->id;
+
+
+        $user->relation('favorites')->removePivot(2);
+
+        $this->assertFalse($this->seeInDatabase('favorites', [
+            'star'=>5,
+            'user_id'=>$user_id,
+            'post_id'=>2
+        ]));
+    }
 }

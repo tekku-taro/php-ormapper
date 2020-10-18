@@ -105,7 +105,12 @@ class Relation extends QueryBuilder
 
         $result = RDBAdapter::update($this->pivotTable, $query);
         if ($result) {
-            $this->parentModel->pivot = array_merge($this->parentModel->pivot, $data) ;
+            $data = [
+                $this->foreignKey => $this->parentModelId,
+                $this->relatedKey => $relatedKeyVal,
+                
+            ] + $data;
+            $this->parentModel->pivot = $data;
             return $this->parentModel;
         } else {
             throw new \ErrorException('pivot record can not be updated!');
