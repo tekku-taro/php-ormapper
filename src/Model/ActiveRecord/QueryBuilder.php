@@ -87,7 +87,7 @@ class QueryBuilder
             $field = '*' . $field;
             $alius = $method;
         } else {
-            $alius = $field;
+            $alius = $field .'_'. $method;
         }
         $this->query['select'][] = ' ' . $method . '(' . $field . ') AS ' . $alius;
 
@@ -206,6 +206,15 @@ class QueryBuilder
         return $this;
     }
 
+    public function whereExists($subquery)
+    {
+        $whereClause = 'EXISTS (' . $subquery . ')';
+
+        $this->query['where'][] = ['AND',$whereClause];
+        
+        return $this;
+    }
+
     public function whereRaw($sql, $conjunct = 'AND')
     {
         $this->query['where'][] = [$conjunct, $sql];
@@ -226,6 +235,9 @@ class QueryBuilder
                     $args[2] = 'NULL';
                 }
                 $whereClause = $args[0] . ' ' . $args[1] . ' ' . $args[2];
+            } elseif (is_callable($args[2])) {
+                $result = $args[2]();
+                $whereClause = $args[0] . ' ' . $args[1] . ' ( ' . $result . ' )';
             } else {
                 $whereClause = $args[0] . ' ' . $args[1] . ' ("' . implode('","', $args[2]) . '")';
             }

@@ -11,13 +11,25 @@ trait RelationBuilder
     public $pivot;
 
 
-    protected $relations = [
+    protected static $relations = [
         // 'リレーション名' => [モデル::class,'タイプ' ,'外部キー'],
         // 'リレーション名' => [モデル::class,'belongsToMany' , '中間テーブル', '自モデルのID', '関連モデルのID']
     ];
     
     protected $relationModels = [];
+
+    public $counts;
     
+    public function countRelations($relationNames)
+    {
+        $relationCounts = [];
+        foreach ($relationNames as $relationName) {
+            $relation = $this->relation($relationName);
+            $relationCounts[$relationName] = $relation->count();
+        }
+        return $this->setRelationCounts($relationCounts);
+    }
+
     public function setPivotAndRelationModel($data, $relationName)
     {
         // 中間テーブルのキー配列を格納
@@ -51,12 +63,21 @@ trait RelationBuilder
         }
         return $this;
     }
+    
+    public function setRelationCounts($relationCounts)
+    {
+        // 関連モデルを格納
+        foreach ($relationCounts as $relationName => $count) {
+            $this->counts[$relationName] = $count;
+        }
+        return $this;
+    }
 
-    public function getRelationData($relationName)
+    public static function getRelationData($relationName)
     {
         // 'user'=>[User::class,'belongsTo' ,'user_id'],
-        if (isset($this->relations[$relationName])) {
-            return $this->relations[$relationName];
+        if (isset(static::$relations[$relationName])) {
+            return static::$relations[$relationName];
         }
         return null;
     }
@@ -103,7 +124,7 @@ trait RelationBuilder
 
     public function relation($relationName)
     {//Post::class,'hasMany' ,'user_id'
-        $data  = $this->relations[$relationName];
+        $data  = static::$relations[$relationName];
         $className = $data[0];
         $type = $data[1];
         if ($type == 'belongsToMany') {

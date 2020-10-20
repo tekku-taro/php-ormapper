@@ -54,9 +54,54 @@ class Relation extends QueryBuilder
      */
     public $eagerLoadings = [];
 
+    public $counts = [];
+
     public function getType()
     {
         return $this->type;
+    }
+
+
+    public function hasRelations($relationNames)
+    {
+        $relationCounts = [];
+        foreach ($relationNames as $relationName) {
+            $relationData = $this->modelClass::getRelationData($relationName);
+            $relationClass = $relationData[0];
+            $type = $relationData[1];
+            $foreignKeyName = $relationData[2];
+
+            switch ($type) {
+                case 'hasMany':
+                    // SELECT * FROM tasksdb.users
+                    // where id IN (select Distinct user_id FROM posts)                    ;
+                    
+                    $this->where('id', 'IN', function () use ($foreignKeyName,$relationClass) {
+                        return $relationClass::select([$foreignKeyName])->toSql();
+                    });
+                    break;
+                case 'belongsTo':
+                    // SELECT * FROM tasksdb.posts
+                    // where user_id is not null;
+                    $this->where($foreignKeyName, 'IS NOT', null);
+                    break;
+                case 'belongsToMany':
+                    // SELECT * FROM tasksdb.users
+                    // where id IN (select user_id FROM favorites)
+                    $pivotTable = $foreignKeyName;
+                    $foreignKeyName = $relationData[3];
+                    $relatedKeyName = $relationData[4];
+
+                    $this->where('id', 'IN', function () use ($foreignKeyName,$pivotTable) {
+                        return ' SELECT '. $foreignKeyName .' FROM '. $pivotTable ;
+                    });
+                    // $subquery = '( SELECT '. $foreignKeyName .' FROM '. $pivotTable .' )';
+                    // $this->where('id', 'IN', $subquery);
+                    break;
+            }
+        }
+
+        return $this;
     }
 
     public function newPivot($relatedKeyVal, $data = [])
@@ -124,6 +169,7 @@ class Relation extends QueryBuilder
         return $this;
     }
 
+
     protected function morphToModel($stmt, $useCollect = false)
     {
         $result = parent::morphToModel($stmt, $useCollect);
@@ -164,12 +210,10 @@ class Relation extends QueryBuilder
     
     protected function loadModelsToCollection(array &$collection)
     {
-        if (empty($this->eagerLoadings)) {
-            return;
-        }
-
-        foreach ($this->eagerLoadings as $relationName) {
-            $this->addModelToCollection($collection, $relationName);
+        if (!empty($this->eagerLoadings)) {
+            foreach ($this->eagerLoadings as $relationName) {
+                $this->addModelToCollection($collection, $relationName);
+            }
         }
     }
 
@@ -199,7 +243,7 @@ class Relation extends QueryBuilder
     {
         //各リレーションの情報（外部キー名）を取得
         $entity = $collection[0];
-        $relationData = $entity->getRelationData($relationName);
+        $relationData = $entity::getRelationData($relationName);
         $relationClass = $relationData[0];
         $type = $relationData[1];
         $foreignKeyName = $relationData[2];
@@ -223,9 +267,6 @@ class Relation extends QueryBuilder
                 [$foreignKeys,$foreignKeyIdxPairs] = $this->getForeignKeysFromCollection($collection, 'id');
                 $query = $this->buildBelongsToManyQuery($foreignKeys, $relationClass, $pivotTable, $foreignKeyName, $relatedKeyName);
                 $relationModels = $query->appendPivot([$foreignKeyName])->findMany();
-                // $relationModels = $relationClass::join($pivotTable, 'id', $relatedKeyName)
-                // ->appendPivot([$foreignKeyName])
-                // ->where($pivotTable.'.'.$foreignKeyName, 'IN', $foreignKeys)->findMany();
                 break;
         }
         // 各モデルの外部キーから添え字を取得し、元のcollectionのモデルにrelationModelとして付加
@@ -246,20 +287,19 @@ class Relation extends QueryBuilder
 
     protected function loadModels(Model &$entity)
     {
-        if (empty($this->eagerLoadings)) {
-            return;
-        }
-        $relationModels = [];
-        foreach ($this->eagerLoadings as $relationName) {
-            $relation = $entity->relation($relationName);
-
-            if (in_array($relation->getType(), ['belongsTo','hasOne'])) {
-                $relationModels[$relationName] = $relation->findFirst();
-            } else {
-                $relationModels[$relationName] = $relation->findMany();
+        if (!empty($this->eagerLoadings)) {
+            $relationModels = [];
+            foreach ($this->eagerLoadings as $relationName) {
+                $relation = $entity->relation($relationName);
+    
+                if (in_array($relation->getType(), ['belongsTo','hasOne'])) {
+                    $relationModels[$relationName] = $relation->findFirst();
+                } else {
+                    $relationModels[$relationName] = $relation->findMany();
+                }
             }
+            $entity->setRelationModels($relationModels);
         }
-        $entity->setRelationModels($relationModels);
     }
 
     protected function getParentRelationName($entity)

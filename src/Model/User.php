@@ -11,7 +11,7 @@ class User extends Model
 
     protected static $hiddenField = ['password'];
 
-    protected $relations = [
+    protected static $relations = [
         'posts'=>[Post::class,'hasMany' ,'user_id'],
         'favorites'=>[Post::class,'belongsToMany', 'favorites', 'user_id', 'post_id']
     ];
