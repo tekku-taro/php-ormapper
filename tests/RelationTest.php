@@ -26,6 +26,7 @@ class RelationTest extends TestCase
         $data = [
             ['id'=>1,'name'=>'taro', 'email'=>'taro@post.com','password'=>'pass'],
             ['id'=>2,'name'=>'hanako', 'email'=>'hanako@post.com','password'=>'pass'],
+            ['id'=>3,'name'=>'jiro', 'email'=>'jiro@post.com','password'=>'pass'],
         ];
         User::insertAll($data);
 
@@ -33,6 +34,7 @@ class RelationTest extends TestCase
             ['id'=>1,'post_id'=>1, 'user_id'=>1,'star'=>3],
             ['id'=>2,'post_id'=>2, 'user_id'=>1,'star'=>5],
             ['id'=>3,'post_id'=>1, 'user_id'=>2,'star'=>2],
+            ['id'=>4,'post_id'=>2, 'user_id'=>3,'star'=>1],
         ];
 
         foreach ($data as $row) {
@@ -161,5 +163,24 @@ class RelationTest extends TestCase
             'user_id'=>$user_id,
             'post_id'=>2
         ]));
+    }
+
+    public function testHasRelations()
+    {
+        // SELECT * FROM tasksdb.users
+        // where id IN (select Distinct user_id FROM posts)
+        $users = User::hasRelations(['posts'])->findMany();
+        
+        $this->assertCount(2, $users);
+
+        // SELECT * FROM tasksdb.posts
+        // where user_id is not null;
+        $posts = Post::hasRelations(['user'])->findMany();
+        $this->assertCount(3, $posts);
+
+        // SELECT * FROM tasksdb.users
+        // where id IN (select user_id FROM favorites)
+        $users = User::hasRelations(['favorites'])->findMany();
+        $this->assertCount(3, $users);
     }
 }

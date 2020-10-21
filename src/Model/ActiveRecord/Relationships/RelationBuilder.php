@@ -66,7 +66,7 @@ trait RelationBuilder
     
     public function setRelationCounts($relationCounts)
     {
-        // 関連モデルを格納
+        // 関連モデルの個数を格納
         foreach ($relationCounts as $relationName => $count) {
             $this->counts[$relationName] = $count;
         }
@@ -84,7 +84,7 @@ trait RelationBuilder
 
     public function getRelationName($relationClass, $type)
     {
-        foreach ($this->relations as $relationName => $relationData) {
+        foreach (static::$relations as $relationName => $relationData) {
             // 'user'=>[User::class,'belongsTo' ,'user_id'],
             [$className,$relationType] = $relationData;
             if ($relationClass == $className && $type == $relationType) {
@@ -104,7 +104,7 @@ trait RelationBuilder
     //動的プロパティ
     public function checkRelations($name)
     {
-        if (array_key_exists($name, $this->relations)) {
+        if (array_key_exists($name, static::$relations)) {
             if (empty($this->relationModels[$name])) {
                 // インスタンスがまだできていなければ、relations情報からクエリビルダで作成して返す
                 $relation = $this->relation($name);

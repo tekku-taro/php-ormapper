@@ -24,20 +24,3 @@ RDBAdapter::init($dbName);
 // $post = Post::findFirst();
 // $user = User::where('id', 1)->findFirst();
 // $post = Post::findFirst();
-
-// SELECT * FROM tasksdb.users
-// where id IN (select Distinct user_id FROM posts)
-$user = User::hasRelations(['posts'])->findMany();
-print_r($user);
-// SELECT * FROM tasksdb.posts
-// where user_id is not null;
-$posts = Post::hasRelations(['user'])->findMany();
-print_r($posts);
-
-// SELECT * FROM tasksdb.users
-// where id IN (select user_id FROM favorites)
-$user = User::hasRelations(['favorites'])->findMany();
-print_r($user);
-
-// $user = $user->countRelations(['posts','favorites']);
-// print_r($user);

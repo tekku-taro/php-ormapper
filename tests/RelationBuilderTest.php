@@ -110,4 +110,13 @@ class RelationBuilderTest extends TestCase
         $this->assertEquals($posts[0]->user_id, $user->id);
         $this->assertEquals($posts[1]->user_id, $user->id);
     }
+
+    
+    public function testCountRelations()
+    {
+        $user = User::where('id', 1)->findFirst();
+        $user = $user->countRelations(['posts','favorites']);
+        $this->assertEquals(2, $user->counts['posts']);
+        $this->assertEquals(2, $user->counts['favorites']);
+    }
 }
