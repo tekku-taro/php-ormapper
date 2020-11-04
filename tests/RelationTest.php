@@ -8,27 +8,28 @@ use ORM\Model\User;
 
 class RelationTest extends TestCase
 {
-    public static function setUpBeforeClass():void
-    {
-        $dbName = 'mysql';
-        RDBAdapter::init($dbName);
-    }
-
+    protected $adapter;
+  
     public function setUp():void
     {
+        $dbName = 'mysql';
+        $this->adapter = RDBAdapter::init($dbName);
+
         $today = new DateTime();
         $data = [
             ['id'=>1,'title'=>'title1', 'body'=>'bad','user_id'=>1,'date'=>$today->format('Y-m-d'),'views'=>2,'finished'=>0,'hidden'=>'hidden1'],
             ['id'=>2,'title'=>'title2', 'body'=>'good','user_id'=>1,'date'=>$today->format('Y-m-d'),'views'=>3,'finished'=>1,'hidden'=>null],
             ['id'=>3,'title'=>'title3', 'body'=>'good','user_id'=>2,'date'=>$today->format('Y-m-d'),'views'=>6,'finished'=>1,'hidden'=>'hidden3'],
         ];
-        Post::insertAll($data);
+        $this->insertViaAdapter('posts', $data);
+        // Post::insertAll($data);
         $data = [
             ['id'=>1,'name'=>'taro', 'email'=>'taro@post.com','password'=>'pass'],
             ['id'=>2,'name'=>'hanako', 'email'=>'hanako@post.com','password'=>'pass'],
             ['id'=>3,'name'=>'jiro', 'email'=>'jiro@post.com','password'=>'pass'],
         ];
-        User::insertAll($data);
+        $this->insertViaAdapter('users', $data);
+        // User::insertAll($data);
 
         $data = [
             ['id'=>1,'post_id'=>1, 'user_id'=>1,'star'=>3],
@@ -37,11 +38,16 @@ class RelationTest extends TestCase
             ['id'=>4,'post_id'=>2, 'user_id'=>3,'star'=>1],
         ];
 
+        $this->insertViaAdapter('favorites', $data);
+    }
+
+    protected function insertViaAdapter($table, $data)
+    {
         foreach ($data as $row) {
             $query = [
                 'data'=>$row
             ];
-            RDBAdapter::insert('favorites', $query);
+            $this->adapter->insert($table, $query);
         }
     }
 
@@ -51,6 +57,7 @@ class RelationTest extends TestCase
         $rdb->table('posts')->truncate();
         $rdb->table('users')->truncate();
         RDBAdapter::truncate('favorites', 'mysql');
+        RDBAdapter::disconnect();
     }
 
     protected function seeInDatabase($table, $data)
@@ -69,11 +76,6 @@ class RelationTest extends TestCase
             return true;
         }
         return false;
-    }
-
-    public static function tearDownBeforeClass():void
-    {
-        RDBAdapter::disconnect();
     }
 
     public function testAppendPivot()

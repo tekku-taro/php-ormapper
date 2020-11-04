@@ -6,6 +6,8 @@ use ORM\Model\Post;
 
 class ModelTest extends TestCase
 {
+    protected $adapter;
+
     public static function setUpBeforeClass():void
     {
         // $config = [
@@ -15,13 +17,14 @@ class ModelTest extends TestCase
         //     'USERNAME'=>'root',
         //     'PASSWORD'=>null,
         // ];
-        $dbName = 'mysql';
-        RDBAdapter::init($dbName);
-        RDBAdapter::delete('posts', []);
+
+        RDBAdapter::truncate('posts');
     }
 
     public function setUp():void
     {
+        $dbName = 'mysql';
+        $this->adapter = RDBAdapter::init($dbName);
         $today = new DateTime();
         $data = [
             ['id'=>1,'title'=>'title1', 'body'=>'bad','user_id'=>1,'date'=>$today->format('Y-m-d'),'views'=>2,'finished'=>0,'hidden'=>'hidden1'],
@@ -33,13 +36,13 @@ class ModelTest extends TestCase
             $query = [
                 'data'=>$row
             ];
-            RDBAdapter::insert('posts', $query);
+            $this->adapter->insert('posts', $query);
         }
     }
 
     public function tearDown():void
     {
-        RDBAdapter::delete('posts', []);
+        $this->adapter->delete('posts', []);
     }
 
     protected function seeInDatabase($table, $data)
@@ -129,16 +132,16 @@ class ModelTest extends TestCase
 
     public function testGroupBy()
     {
-        $result = Post::groupBy('user_id')->having('views > 4')->sum('views');
+        $result = Post::groupBy('user_id')->having('views_sum', '>', 4)->sum('views');
 
         $expected = [
             '1'=>[
                 'user_id'=>1,
-                'views'=>5
+                'views_sum'=>5
             ],
             '2'=>[
                 'user_id'=>2,
-                'views'=>6
+                'views_sum'=>6
             ],
         ];
 
@@ -184,7 +187,7 @@ class ModelTest extends TestCase
 
     public function testWhereRaw()
     {
-        $sql = 'body = "good" OR finished = "1"';
+        $sql = 'body = ? OR finished = ?';
         $result = Post::whereRaw($sql, 'OR')->toSql();
 
         $expected = Post::where('body', 'good')->orWhere('finished', 1)->toSql();
@@ -197,7 +200,7 @@ class ModelTest extends TestCase
     {
         $sql = Post::where('body', 'good')->orWhere('finished', 1)->toSql();
         'toSql: '. var_dump($sql);
-        $expected = 'SELECT posts.* FROM posts WHERE body = "good" OR finished = "1"';
+        $expected = 'SELECT posts.* FROM posts WHERE body = ? OR finished = ?';
 
         $this->assertEquals($expected, $sql);
     }

@@ -9,13 +9,14 @@ use ORM\Model\ActiveRecord\QueryBuilder;
 class RDBTest extends TestCase
 {
     public $dbName = 'mysql';
+    protected $adapter;
 
     public function setUp():void
     {
         $this->setupConnection();
         $this->config = DbConfig::getDbInfo();
         RDBAdapter::changeDefault($this->dbName);
-        RDBAdapter::delete('posts', []);
+        $this->adapter->delete('posts', []);
     }
 
     public function tearDown():void
@@ -24,7 +25,7 @@ class RDBTest extends TestCase
 
     protected function setupConnection()
     {
-        RDBAdapter::init($this->dbName);
+        $this->adapter = RDBAdapter::init($this->dbName);
     }
 
     protected function disconnectAfterTest()
@@ -52,7 +53,7 @@ class RDBTest extends TestCase
 
     protected function fillTable($table)
     {
-        RDBAdapter::delete('posts', []);
+        $this->adapter->delete('posts', []);
         $data = [
             ['title'=>'test1', 'views'=>'1', 'finished'=>0, 'hidden'=>'secret' ],
             ['title'=>'test2', 'views'=>'2', 'finished'=>1, 'hidden'=>'secret' ],
@@ -62,7 +63,7 @@ class RDBTest extends TestCase
         ];
         foreach ($data as $row) {
             $query = ['data'=>$row];
-            $id = RDBAdapter::insert($table, $query);
+            $id = $this->adapter->insert($table, $query);
         }
     }
 
@@ -88,7 +89,7 @@ class RDBTest extends TestCase
         $record = ['title'=>'test31', 'views'=>'31'];
 
         $query = ['data'=>$record];
-        $id = RDBAdapter::insert('posts', $query, $this->dbName);
+        $id = $this->adapter->insert('posts', $query, $this->dbName);
 
 
         RDB::database('mysql')->commit();
@@ -103,7 +104,7 @@ class RDBTest extends TestCase
         $record = ['title'=>'test31', 'views'=>'31'];
 
         $query = ['data'=>$record];
-        $id = RDBAdapter::insert('posts', $query, $this->dbName);
+        $id = $this->adapter->insert('posts', $query, $this->dbName);
 
 
         RDB::database('mysql')->rollBack();

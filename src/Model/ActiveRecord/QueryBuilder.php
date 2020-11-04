@@ -1,21 +1,30 @@
 <?php
 namespace ORM\Model\ActiveRecord;
 
+use ErrorException;
 use ORM\Model\Adapter\RDBAdapter;
 use ORM\Model\ActiveRecord\Paginator;
 
 class QueryBuilder
 {
+    protected $adapter;
     protected $tableName;
     protected $modelClass;
     protected $dbName;
 
-    protected $query = [];
+    protected $query = ['binds'=>[]];
+
+    protected $operators = [
+        '='=>1,'<=>'=>1,'>'=>1,'>='=>1,'IN'=>1,
+        'IS'=>1,'IS NOT'=>1,'<'=>1,
+        '<='=>1,'LIKE'=>1,'!='=>1, '<>'=>1,
+    ];
 
     protected $queryStringKeys = ['curPage'=>0, 'max'=>0];
 
     public function __construct($tableName, $modelClass, $dbName = null)
     {
+        $this->adapter = RDBAdapter::getAdapter();
         $this->tableName = $tableName;
         $this->modelClass = $modelClass;
         $this->dbName = $dbName;
@@ -23,7 +32,7 @@ class QueryBuilder
 
     public function execSelect($tableName, $query, $toSql = null)
     {
-        return RDBAdapter::select($tableName, $query, $toSql, $this->dbName);
+        return $this->adapter->select($tableName, $query, $toSql, $this->dbName);
     }
 
     public function truncate()
@@ -85,9 +94,9 @@ class QueryBuilder
     {
         if (empty($field)) {
             $field = '*' . $field;
-            $alius = $method;
+            $alius = strtolower($method) ;
         } else {
-            $alius = $field .'_'. $method;
+            $alius = $field .'_'. strtolower($method);
         }
         $this->query['select'][] = ' ' . $method . '(' . $field . ') AS ' . $alius;
 
@@ -190,7 +199,7 @@ class QueryBuilder
 
     public function where(...$args)
     {
-        $whereClause = $this->createWhere(...$args);
+        $whereClause = $this->createWhere('where', ...$args);
 
         $this->query['where'][] = ['AND',$whereClause];
         
@@ -199,7 +208,7 @@ class QueryBuilder
 
     public function orWhere(...$args)
     {
-        $whereClause = $this->createWhere(...$args);
+        $whereClause = $this->createWhere('where', ...$args);
 
         $this->query['where'][] = ['OR',$whereClause];
         
@@ -215,35 +224,57 @@ class QueryBuilder
         return $this;
     }
 
-    public function whereRaw($sql, $conjunct = 'AND')
+    public function whereRaw($sql, $binds = [], $conjunct = 'AND')
     {
         $this->query['where'][] = [$conjunct, $sql];
-        
+        if (!empty($binds)) {
+            $this->setBind('where', $binds);
+        }
+        // array_push($this->query['binds']['where'], ...$binds[2]);
         return $this;
     }
 
-    protected function createWhere(...$args)
+    protected function createWhere($name, ...$args)
     {
         $whereClause = '';
         if (count($args) == 2) {
-            $whereClause = $args[0] . ' = "' . $args[1] . '"';
+            $whereClause = $args[0] . ' = ?';
+            $this->setBind($name, $args[1]);
+        // $this->query['binds'][$name][] = $args[1];
         } elseif (count($args) > 2) {
-            if (is_string($args[2]) || is_null($args[2])) {
-                if (!is_null($args[2])) {
-                    $args[2] = '"' . $args[2] . '"';
-                } else {
-                    $args[2] = 'NULL';
-                }
-                $whereClause = $args[0] . ' ' . $args[1] . ' ' . $args[2];
-            } elseif (is_callable($args[2])) {
+            if (!isset($this->operators[$args[1]])) {
+                throw new ErrorException('second param for where/having method should be specific operators!');
+            }
+            if (is_callable($args[2])) {
                 $result = $args[2]();
                 $whereClause = $args[0] . ' ' . $args[1] . ' ( ' . $result . ' )';
+            } elseif (is_array($args[2])) {
+                $placeholders = $this->adapter->getPlaceHolders(count($args[2]));
+                $whereClause = $args[0] . ' ' . $args[1] . ' ( ' . implode(',', $placeholders) . ' )';
+                $this->setBind($name, $args[2]);
+            // array_push($this->query['binds'][$name], ...$args[2]);
             } else {
-                $whereClause = $args[0] . ' ' . $args[1] . ' ("' . implode('","', $args[2]) . '")';
+                $this->setBind($name, $args[2]);
+                // $this->query['binds'][$name][] = $args[2];
+                $whereClause = $args[0] . ' ' . $args[1] . ' ?';
             }
         }
         return $whereClause;
     }
+
+    protected function setBind($name, $value)
+    {
+        if (!is_array($value)) {
+            $this->query['binds'][$name][] = $value;
+        } else {
+            if (isset($this->query['binds'][$name])) {
+                array_push($this->query['binds'][$name], ...$value);
+            } else {
+                $this->query['binds'][$name] = $value;
+            }
+        }
+    }
+
 
     public function orderBy($field, $order = 'ASC')
     {
@@ -266,10 +297,11 @@ class QueryBuilder
         return $this;
     }
 
-    public function having($condition)
+    public function having(...$args)
     {
-        $this->query['having'] = $condition;
-        
+        $whereClause = $this->createWhere('having', ...$args);
+        $this->query['having'][] = ['OR',$whereClause];
+
         return $this;
     }
 }

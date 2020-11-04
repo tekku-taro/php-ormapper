@@ -17,8 +17,15 @@ class Model implements Entity
     
     protected $originals = [];
     protected $dirties = [];
-
     
+    protected $adapter;
+
+    public function __construct()
+    {
+        $this->adapter = RDBAdapter::getAdapter();
+    }
+
+
     protected static function getTableName()
     {
         if (empty(static::$tableName)) {
@@ -56,7 +63,7 @@ class Model implements Entity
     {
         if (isset($this->originals[$name]) && $this->originals[$name] != $value) {
             $this->dirties[$name] = $value;
-        } elseif (!isset($this->originals[$name])) {
+        } elseif (!isset($this->originals[$name]) && $name != 'adapter') {
             $this->dirties[$name] = $value;
         }
     }
@@ -88,7 +95,7 @@ class Model implements Entity
             'data' => $properties
         ];
 
-        $id = RDBAdapter::insert(static::getTableName(), $query);
+        $id = $this->adapter->insert(static::getTableName(), $query);
         if ($id) {
             $this->clearDirties();
             $this->originals['id'] = $id;
@@ -112,10 +119,13 @@ class Model implements Entity
         $query = [
             'data' => $properties,
             'where'=>[
-                ['AND','id = ' . $this->originals['id']]
+                ['AND','id = ?']
+            ],
+            'binds'=>[
+                'where'=>[$this->originals['id']]
             ]
         ];
-        $result = RDBAdapter::update(static::getTableName(), $query);
+        $result = $this->adapter->update(static::getTableName(), $query);
         if ($result) {
             $this->clearDirties();
         } else {
@@ -123,7 +133,7 @@ class Model implements Entity
         }
     }
 
-    public static function createFromArray($data)
+    public function createFromArray($data)
     {
         $insertData =  static::pickInsertable($data);
 
@@ -131,7 +141,7 @@ class Model implements Entity
             'data' => $insertData
         ];
 
-        $id = RDBAdapter::insert(static::getTableName(), $query);
+        $id = $this->adapter->insert(static::getTableName(), $query);
         if ($id) {
             $insertData['id'] = $id;
             return static::morph($insertData);
@@ -194,9 +204,18 @@ class Model implements Entity
         if (empty($this->originals['id'])) {
             throw new \ErrorException('there\'s no id property set in this model');
         }
-        $whereClause = ['AND','id = ' . $this->originals['id']];
-        $query['where'][] = $whereClause;
-        return RDBAdapter::delete(static::getTableName(), $query);
+
+        $query = [
+            'where'=>[
+                ['AND','id = ?']
+            ],
+            'binds'=>[
+                'where'=>[$this->originals['id']]
+            ]
+        ];
+        // $whereClause = ['AND','id = ' . $this->originals['id']];
+        // $query['where'][] = $whereClause;
+        return $this->adapter->delete(static::getTableName(), $query);
     }
 
     public static function __callStatic($method, $args)
@@ -207,7 +226,7 @@ class Model implements Entity
         }
         $class = get_called_class();
         if (is_callable([$class, $method])) {
-            return static::$method(...$args);
+            return (new static)->$method(...$args);
         }
     }
 
@@ -229,7 +248,7 @@ class Model implements Entity
             'bulk'=>true,
         ];
 
-        return RDBAdapter::bulkInsert(static::getTableName(), $query);
+        return RDBAdapter::getAdapter()->bulkInsert(static::getTableName(), $query);
     }
 
     public static function updateAll($search = [], $setData, $updateAllRecord = false)
@@ -241,7 +260,8 @@ class Model implements Entity
             } elseif ($value === false) {
                 $value = 0;
             }
-            $query['where'][] = ['AND', $field . ' = ' . (string) $value];
+            $query['where'][] = ['AND', $field . ' = ?'];
+            $query['binds']['where'][] =  (string) $value;
         }
         if (empty($query) && $updateAllRecord == false) {
             return 0;
@@ -249,20 +269,21 @@ class Model implements Entity
 
         $query['data'] = $setData;
 
-        return RDBAdapter::update(static::getTableName(), $query);
+        return RDBAdapter::getAdapter()->update(static::getTableName(), $query);
     }
 
     public static function deleteAll($search = [], $deleteAllRecord = false)
     {
         $query = [];
         foreach ($search as $field => $value) {
-            $query['where'][] = ['AND', $field . ' = ' . $value];
+            $query['where'][] = ['AND', $field . ' = ?'];
+            $query['binds']['where'][] =  (string) $value;
         }
         if (empty($query) && $deleteAllRecord == false) {
             return 0;
         }
 
-        return RDBAdapter::delete(static::getTableName(), $query);
+        return RDBAdapter::getAdapter()->delete(static::getTableName(), $query);
     }
 
     public function toArray()

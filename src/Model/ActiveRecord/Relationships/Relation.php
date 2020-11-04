@@ -115,7 +115,7 @@ class Relation extends QueryBuilder
             'data' => $insertData
         ];
 
-        $id = RDBAdapter::insert($this->pivotTable, $query, $this->dbName);
+        $id = $this->adapter->insert($this->pivotTable, $query, $this->dbName);
         if ($id) {
             $this->parentModel->pivot = $insertData;
             return $this->parentModel;
@@ -129,10 +129,17 @@ class Relation extends QueryBuilder
         if (empty($relatedKeyVal)) {
             throw new \ErrorException('Provided related key is empty;');
         }
-        $whereClauses[] = ['AND', $this->foreignKey . ' = ' . $this->parentModelId];
-        $whereClauses[] = ['AND', $this->relatedKey . ' = ' . $relatedKeyVal];
-        $query['where'] = $whereClauses;
-        return RDBAdapter::delete($this->pivotTable, $query);
+        $whereClauses[] = ['AND', $this->foreignKey . ' = ?' ];
+        $whereClauses[] = ['AND', $this->relatedKey . ' = ?' ];
+
+        $binds = [$this->parentModelId, $relatedKeyVal];
+        $query = [
+            'where'=>$whereClauses,
+            'binds'=>[
+                'where'=>$binds
+            ]
+        ];
+        return $this->adapter->delete($this->pivotTable, $query);
     }
 
     public function updatePivot($relatedKeyVal, $data = [])
@@ -140,15 +147,18 @@ class Relation extends QueryBuilder
         if (empty($data)) {
             return false;
         }
-        $whereClauses[] = ['AND', $this->foreignKey . ' = ' . $this->parentModelId];
-        $whereClauses[] = ['AND', $this->relatedKey . ' = ' . $relatedKeyVal];
-
+        $whereClauses[] = ['AND', $this->foreignKey . ' = ?'];
+        $whereClauses[] = ['AND', $this->relatedKey . ' = ?'];
+        $binds = [$this->parentModelId, $relatedKeyVal];
         $query = [
             'data' => $data,
-            'where'=>$whereClauses
+            'where'=>$whereClauses,
+            'binds'=>[
+                'where'=>$binds
+            ]
         ];
 
-        $result = RDBAdapter::update($this->pivotTable, $query);
+        $result = $this->adapter->update($this->pivotTable, $query);
         if ($result) {
             $data = [
                 $this->foreignKey => $this->parentModelId,

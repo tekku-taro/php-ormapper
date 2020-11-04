@@ -5,6 +5,8 @@ use ORM\Model\Adapter\RDBAdapter;
 
 class RDBAdapterTest extends TestCase
 {
+    protected $adapter;
+
     public function setUp():void
     {
         $this->config = [
@@ -23,7 +25,7 @@ class RDBAdapterTest extends TestCase
 
     protected function setupConnection()
     {
-        RDBAdapter::init($this->dbName);
+        $this->adapter = RDBAdapter::init($this->dbName);
     }
 
     protected function disconnectAfterTest()
@@ -66,7 +68,7 @@ class RDBAdapterTest extends TestCase
 
     protected function fillTable($table)
     {
-        RDBAdapter::delete('posts', []);
+        $this->adapter->delete('posts', []);
         $data = [
             ['title'=>'test1', 'views'=>'1', 'finished'=>0, 'hidden'=>'secret' ],
             ['title'=>'test2', 'views'=>'2', 'finished'=>1, 'hidden'=>'secret' ],
@@ -76,7 +78,7 @@ class RDBAdapterTest extends TestCase
         ];
         foreach ($data as $row) {
             $query = ['data'=>$row];
-            $id = RDBAdapter::insert($table, $query);
+            $id = $this->adapter->insert($table, $query);
         }
     }
 
@@ -89,9 +91,9 @@ class RDBAdapterTest extends TestCase
 
     public function testInit()
     {
-        $dbh = RDBAdapter::init($this->dbName);
-        $expected = \PDO::class;
-        $this->assertInstanceOf($expected, $dbh);
+        $adapter = RDBAdapter::init($this->dbName);
+        $expected = RDBAdapter::class;
+        $this->assertInstanceOf($expected, $adapter);
     }
 
     public function testGetInstance()
@@ -118,8 +120,9 @@ class RDBAdapterTest extends TestCase
 
     public function testRaw()
     {
+        $this->setupConnection();
         $sql = 'test sql';
-        $callback = RDBAdapter::raw($sql);
+        $callback = $this->adapter->raw($sql);
         $expected = \Closure::class;
         $this->assertInstanceOf($expected, $callback);
 
@@ -137,7 +140,7 @@ class RDBAdapterTest extends TestCase
         $table = 'posts';
         $query = $this->getQuery();
 
-        $id = RDBAdapter::insert($table, $query);
+        $id = $this->adapter->insert($table, $query);
 
         $this->assertTrue(is_numeric($id));
         
@@ -153,7 +156,7 @@ class RDBAdapterTest extends TestCase
         $table = 'posts';
         $query = $this->getQuery();
 
-        $id = RDBAdapter::insert($table, $query);
+        $id = $this->adapter->insert($table, $query);
         print $id;
         $query = [
             'data'=>[
@@ -163,11 +166,14 @@ class RDBAdapterTest extends TestCase
                 'hidden'=>'secret updated data',
             ],
             'where'=>[
-                ['AND','id ='. $id]
+                ['AND','id = ?']
+            ],
+            'binds'=>[
+                'where'=>[$id]
             ]
             ];
         print_r($query['data']);
-        $result = RDBAdapter::update($table, $query);
+        $result = $this->adapter->update($table, $query);
 
         
         $this->assertTrue($this->seeInDatabase($table, $query['data']));
@@ -185,15 +191,21 @@ class RDBAdapterTest extends TestCase
 
         $query = [
             'where'=>[
-                ['AND','finished = 1']
+                ['AND','finished = ?']
             ],
             'select'=>['sum(views) AS sum'],
             'groupBy'=>'hidden',
-            'having'=>'sum > 2'
+            'having'=>[
+                ['AND','sum > ?']
+            ],
+            'binds'=>[
+                'where'=>[1],
+                'having'=>[2]
+            ]
         ];
         $expected = [7];
 
-        $result = RDBAdapter::select($table, $query)->fetchAll(PDO::FETCH_ASSOC);
+        $result = $this->adapter->select($table, $query)->fetchAll(PDO::FETCH_ASSOC);
         print_r($result);
         $result = array_map(function ($item) {
             return $item['sum'];
@@ -209,7 +221,7 @@ class RDBAdapterTest extends TestCase
         ];
         $expected = ['test3','test4'];
 
-        $result = RDBAdapter::select($table, $query)->fetchAll(PDO::FETCH_ASSOC);
+        $result = $this->adapter->select($table, $query)->fetchAll(PDO::FETCH_ASSOC);
         $result = array_map(function ($item) {
             return $item['title'];
         }, $result);
@@ -219,14 +231,17 @@ class RDBAdapterTest extends TestCase
 
         $query = [
             'where'=>[
-                ['AND','finished = 1']
+                ['AND','finished = ?']
+            ],
+            'binds'=>[
+                'where'=>[1]
             ],
             'orderBy'=>'title ASC',
             'select'=>['title']
         ];
         $expected = ['test2','test3','test4',];
 
-        $result = RDBAdapter::select($table, $query)->fetchAll(PDO::FETCH_ASSOC);
+        $result = $this->adapter->select($table, $query)->fetchAll(PDO::FETCH_ASSOC);
         $result = array_map(function ($item) {
             return $item['title'];
         }, $result);
@@ -240,20 +255,23 @@ class RDBAdapterTest extends TestCase
     public function testDelete()
     {
         $this->setupConnection();
-        RDBAdapter::delete('posts', []);
+        $this->adapter->delete('posts', []);
 
         $table = 'posts';
         $query = $this->getQuery();
 
-        $id = RDBAdapter::insert($table, $query);
+        $id = $this->adapter->insert($table, $query);
        
         $this->assertTrue($this->seeInDatabase($table, $query['data']));
         $query = [
             'where'=>[
-                ['AND','id = '.$id]
+                ['AND','id = ?']
+            ],
+            'binds'=>[
+                'where'=>[$id]
             ]
             ];
-        $result = RDBAdapter::delete($table, $query);
+        $result = $this->adapter->delete($table, $query);
         
         $this->assertIsInt($result);
         

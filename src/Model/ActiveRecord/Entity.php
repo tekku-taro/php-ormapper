@@ -5,7 +5,7 @@ interface Entity
 {
     public function saveNew();
     public function saveUpdate();
-    public static function createFromArray($data);
+    public function createFromArray($data);
     public function editWith($data);
     public function delete();
     public function toArray();

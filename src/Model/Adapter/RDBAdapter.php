@@ -7,49 +7,62 @@ class RDBAdapter implements DbAdapter
 {
     protected static $defaultDb;
     protected static $dbHandlers = [];
+    protected $binds = [];
 
 
-    public static function insert($table, $query, $dbName = null)
+    public function insert($table, $query, $dbName = null)
     {
         $fields = array_keys($query['data']);
-        $values = array_values($query['data']);
-        $placeholders = array_map(function () {
-            return '?';
-        }, $values);
+        $placeholders = $this->getPlaceHolders(count($fields));
+        $this->binds = array_values($query['data']);
+
         $sql = 'INSERT INTO ' . $table . '(' . implode(",", $fields) .
         ') VALUES(' . implode(',', $placeholders) . ') ';
 
         $stmt = static::getInstance($dbName)->prepare($sql);
-        if ($stmt->execute($values)) {
+        if ($stmt->execute($this->binds)) {
+            $this->clearBind();
             return static::getInstance($dbName)->lastInsertId();
         }
-
-        static::checkError($stmt);
+        $this->clearBind();
+        $this->checkError($stmt);
 
         return false;
     }
 
-    public static function bulkInsert($table, $query, $dbName = null)
+    public function getPlaceHolders($size)
     {
-        $fields = array_keys($query['data'][0]);
+        $placeholders = [];
+        for ($i=0; $i < $size; $i++) {
+            $placeholders[] = "?";
+        }
+        return $placeholders;
+    }
 
+    public function bulkInsert($table, $query, $dbName = null)
+    {
+        $this->binds = [];
+        $fields = array_keys($query['data'][0]);
+        $qMarks = $this->getPlaceHolders(count($fields));
         foreach ($query['data'] as $row) {
             $arrayValues = array_values($row);
-            $VALUES[] = '("' . implode('","', $arrayValues) . '") ';
+            array_push($this->binds, ...$arrayValues);
+            $placeholders[] = '(' . implode(',', $qMarks) . ') ';
         }
 
         $sql = 'INSERT INTO ' . $table . '(' . implode(",", $fields) .
-        ') VALUES' . implode(',', $VALUES);
+        ') VALUES' . implode(',', $placeholders);
 
         $stmt = static::getInstance($dbName)->prepare($sql);
-        $result = $stmt->execute();
-        static::checkError($stmt);
+        $result = $stmt->execute($this->binds);
+        $this->clearBind();
+        $this->checkError($stmt);
 
         return $stmt->rowCount();
     }
 
 
-    public static function select($table, $query, $toSql = false, $dbName = null)
+    public function select($table, $query, $toSql = false, $dbName = null)
     {
         if (empty($query['select'])) {
             $select = $table . '.' . '*';
@@ -61,49 +74,53 @@ class RDBAdapter implements DbAdapter
         }
 
         $sql = 'SELECT '. $select .' FROM ' . $table .
-        static::buildQuery($query) ;
-        // print $sql . PHP_EOL;
-
+        $this->buildQuery($query) ;
+        print $sql . PHP_EOL;
+        print_r($this->binds);
+        // exit;
         if ($toSql) {
             return $sql;
         }
 
         $stmt = static::getInstance($dbName)->prepare($sql);
-        $result = $stmt->execute();
+        $result = $stmt->execute($this->binds);
+        $this->clearBind();
         if ($result) {
-            static::checkError($stmt);
+            $this->checkError($stmt);
         }
 
         return $stmt;
     }
 
 
-    public static function update($table, $query, $dbName = null)
+    public function update($table, $query, $dbName = null)
     {
         $fieldValues = [];
         $values = [];
         foreach ($query['data'] as $field => $value) {
             $fieldValues[] = $field . ' = ' . '?';
-            $values[] = $value;
+            $this->binds[] = $value;
         }
         $sql = 'UPDATE ' . $table . ' SET ' . implode(",", $fieldValues)  .
-        static::buildQuery($query) ;
+        $this->buildQuery($query) ;
 
         $stmt = static::getInstance($dbName)->prepare($sql);
-        $result = $stmt->execute($values);
-        static::checkError($stmt);
+        $result = $stmt->execute($this->binds);
+        $this->clearBind();
+        $this->checkError($stmt);
 
         return $result;
     }
     
-    public static function delete($table, $query, $dbName = null)
+    public function delete($table, $query, $dbName = null)
     {
         $sql = 'DELETE FROM ' . $table .
-        static::buildQuery($query) ;
+        $this->buildQuery($query) ;
 
         $stmt = static::getInstance($dbName)->prepare($sql);
-        $result = $stmt->execute();
-        static::checkError($stmt);
+        $result = $stmt->execute($this->binds);
+        $this->clearBind();
+        $this->checkError($stmt);
 
         return $stmt->rowCount();
     }
@@ -114,19 +131,22 @@ class RDBAdapter implements DbAdapter
 
         $stmt = static::getInstance($dbName)->prepare($sql);
         $result = $stmt->execute();
-        static::checkError($stmt);
+
+        if (!empty($stmt->errorInfo()[2])) {
+            print $stmt->errorInfo()[2];
+        }
 
         return $result;
     }
 
-    protected static function checkError($stmt)
+    protected function checkError($stmt)
     {
         if (!empty($stmt->errorInfo()[2])) {
             print $stmt->errorInfo()[2];
         }
     }
 
-    protected static function buildWhere($where)
+    protected function buildWhere($where)
     {
         $sql  = '';
         foreach ($where as $condition) {
@@ -141,7 +161,7 @@ class RDBAdapter implements DbAdapter
         return $sql;
     }
 
-    protected static function buildQuery($query)
+    protected function buildQuery($query)
     {
         $sql = '';
         if (!empty($query['join'])) {
@@ -149,7 +169,10 @@ class RDBAdapter implements DbAdapter
         }
         if (!empty($query['where'])) {
             $sql .= ' WHERE ';
-            $sql .= static::buildWhere($query['where']) ;
+            $sql .= $this->buildWhere($query['where']) ;
+            if (isset($query['binds']['where'])) {
+                array_push($this->binds, ...$query['binds']['where']);
+            }
         }
         if (!empty($query['orderBy'])) {
             $sql .= ' ORDER BY ' . $query['orderBy'];
@@ -157,7 +180,10 @@ class RDBAdapter implements DbAdapter
         if (!empty($query['groupBy'])) {
             $sql .= ' GROUP BY ' . $query['groupBy'];
             if (!empty($query['having'])) {
-                $sql .= ' HAVING ' . $query['having'];
+                $sql .= ' HAVING ' . $this->buildWhere($query['having']);
+                if (isset($query['binds']['having'])) {
+                    array_push($this->binds, ...$query['binds']['having']);
+                }
             }
         }
         if (!empty($query['limit'])) {
@@ -170,6 +196,16 @@ class RDBAdapter implements DbAdapter
         return $sql;
     }
 
+    protected function setBind($value)
+    {
+        $this->binds[] = $value;
+        return '?';
+    }
+
+    protected function clearBind()
+    {
+        $this->binds = [];
+    }
 
     public static function connect($config)
     {
@@ -186,6 +222,10 @@ class RDBAdapter implements DbAdapter
         return $db;
     }
 
+    public static function getAdapter()
+    {
+        return new static;
+    }
     public static function init($dbName = null)
     {
         if (empty($dbName)) {
@@ -196,7 +236,7 @@ class RDBAdapter implements DbAdapter
         $config = DbConfig::getDbInfo();
         static::setInstance(static::connect($config), static::$defaultDb);
 
-        return static::getInstance($dbName);
+        return static::getAdapter();
     }
 
     public static function getInstance($dbName = null)
@@ -232,7 +272,7 @@ class RDBAdapter implements DbAdapter
     }
 
 
-    public static function raw($sql)
+    public function raw($sql)
     {
         return function ($before = '', $after = '') use ($sql) {
             return $before . $sql . $after;
