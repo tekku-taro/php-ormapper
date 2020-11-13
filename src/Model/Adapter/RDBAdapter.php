@@ -229,10 +229,10 @@ class RDBAdapter implements DbAdapter
     public static function init($dbName = null)
     {
         if (empty($dbName)) {
-            $dbName = static::$defaultDb;
-        } else {
-            static::$defaultDb = DbConfig::getDefault();
+            $dbName = DbConfig::getDefault();
         }
+        static::$defaultDb = $dbName;
+
         $config = DbConfig::getDbInfo();
         static::setInstance(static::connect($config), static::$defaultDb);
 
